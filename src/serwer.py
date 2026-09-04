@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """VGM MCP — serwer Model Context Protocol do TradingView.
 
-Zasada, według której powstał: **w serwerze są wyłącznie narzędzia, które
-zostały uruchomione na żywym rynku i zwróciły prawdziwe dane.** Nic „na zapas",
-nic „powinno działać". Czego nie sprawdziłem, tego tu nie ma — plan reszty
-jest w README, jawnie oznaczony jako niezbudowany.
+Zasada: **w serwerze są wyłącznie narzędzia uruchomione na żywym rynku.**
+Nic „na zapas", nic „powinno działać". Czego nie sprawdziłem, tego tu nie ma —
+lista brakujących rzeczy stoi otwarcie w README.
 
-Wszystkie narzędzia działają bez logowania do TradingView i bez otwartej
-przeglądarki. Korzystają z publicznego punktu `scanner.tradingview.com`.
+Wszystko działa bez logowania do TradingView i bez otwartej przeglądarki.
 """
 from __future__ import annotations
 
@@ -17,7 +15,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import analiza  # noqa: E402
 import dane  # noqa: E402
+import pola  # noqa: E402
 
 from mcp.server import Server  # noqa: E402
 from mcp.server.stdio import stdio_server  # noqa: E402
@@ -25,164 +25,168 @@ from mcp.types import TextContent, Tool  # noqa: E402
 
 serwer = Server("vgm-mcp")
 
-OSTRZEZENIE_DANE = (
-    "Dane pochodzą z publicznego punktu TradingView i są liczone po ich stronie. "
-    "Nie są kwotowaniem brokera — do handlu użyj ceny od swojego brokera."
-)
+UWAGA = ("Dane z publicznego punktu TradingView, liczone po ich stronie. "
+         "To nie są kwotowania brokera — do handlu użyj ceny od swojego brokera.")
+
+S = {"type": "string"}
+L = {"type": "array", "items": {"type": "string"}}
+
+
+def _n(nazwa, opis, wlasciwosci=None, wymagane=None):
+    return Tool(
+        name=nazwa,
+        description=opis + " " + UWAGA,
+        inputSchema={
+            "type": "object",
+            "properties": wlasciwosci or {},
+            "required": wymagane or [],
+        },
+    )
 
 
 @serwer.list_tools()
 async def lista_narzedzi() -> list[Tool]:
+    sym = {"symbol": dict(S, description="Nazwa z giełdą: FX:EURUSD, NASDAQ:NVDA, COINBASE:BTCUSD")}
+    interw = {"interwal": dict(S, description="1, 5, 15, 60, 240, 1W. Pominięty = bieżący")}
+    rynek = {"rynek": dict(S, description="forex, crypto, america, poland…", default="forex")}
+    ile = {"ile": {"type": "integer", "default": 20}}
+
     return [
-        Tool(
-            name="vgm_odczyt",
-            description=(
-                "Bieżące wartości dla jednego instrumentu: cena, zmiana, wolumen "
-                "i wskaźniki policzone przez TradingView (RSI, ADX, MACD, ATR, "
-                "średnie, wstęgi Bollingera, punkty zwrotne). Bez logowania, "
-                "bez przeglądarki. " + OSTRZEZENIE_DANE
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "symbol": {
-                        "type": "string",
-                        "description": "Nazwa z giełdą, np. FX:EURUSD, NASDAQ:NVDA, COINBASE:BTCUSD",
-                    },
-                    "pola": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Nazwy pól TradingView. Pominięte = zestaw domyślny.",
-                    },
-                },
-                "required": ["symbol"],
-            },
-        ),
-        Tool(
-            name="vgm_wiele",
-            description=(
-                "To samo dla wielu instrumentów w JEDNYM zapytaniu, zamiast kilku "
-                "osobnych. Używaj, gdy porównujesz pary. " + OSTRZEZENIE_DANE
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "symbole": {"type": "array", "items": {"type": "string"}},
-                    "pola": {"type": "array", "items": {"type": "string"}},
-                },
-                "required": ["symbole"],
-            },
-        ),
-        Tool(
-            name="vgm_przeglad",
-            description=(
-                "Przegląd rynku z filtrem — np. wszystkie pary z RSI poniżej 30. "
-                "Zwraca listę posortowaną po zmianie. " + OSTRZEZENIE_DANE
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "rynek": {
-                        "type": "string",
-                        "description": "forex, crypto, america, poland…",
-                        "default": "forex",
-                    },
-                    "warunki": {
-                        "type": "array",
-                        "items": {"type": "object"},
-                        "description": 'Filtr TradingView, np. [{"left":"RSI","operation":"less","right":30}]',
-                    },
-                    "ile": {"type": "integer", "default": 30},
-                },
-            },
-        ),
-        Tool(
-            name="vgm_mtf",
-            description=(
-                "Ten sam wskaźnik na kilku interwałach naraz, jednym zapytaniem. "
-                "Zmierzone działające interwały: 1, 5, 15, 60, 240, 1W. "
-                "Interwał 1D bywa zwracany jako pusty — to zachowanie TradingView, "
-                "nie błąd tego narzędzia. " + OSTRZEZENIE_DANE
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "symbol": {"type": "string"},
-                    "wskazniki": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "np. RSI, ADX, Recommend.All",
-                    },
-                    "interwaly": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "np. 5, 15, 60, 240",
-                    },
-                },
-                "required": ["symbol"],
-            },
-        ),
-        Tool(
-            name="vgm_zgodnosc",
-            description=(
-                "Ile interwałów wskazuje w tę samą stronę. Zwraca surowe zliczenie: "
-                "które interwały są powyżej progu kupna, które poniżej progu sprzedaży. "
-                "CELOWO nie podejmuje decyzji handlowej — próg i sposób łączenia "
-                "należą do strategii i wymagają własnego pomiaru. " + OSTRZEZENIE_DANE
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "symbol": {"type": "string"},
-                    "interwaly": {"type": "array", "items": {"type": "string"}},
-                    "prog_kupno": {"type": "number", "default": 55},
-                    "prog_sprzedaz": {"type": "number", "default": 45},
-                },
-                "required": ["symbol"],
-            },
-        ),
+        # ── odczyt ──────────────────────────────────────────────────────
+        _n("vgm_odczyt",
+           "Wartości wybranych pól dla instrumentu. 62 dostępne pola: cena, wolumen, "
+           "oscylatory pędu, wskaźniki trendu, średnie, zmienność, poziomy, wyniki, ocena.",
+           {**sym, "pola": dict(L, description="Nazwy pól. Pominięte = zestaw domyślny")},
+           ["symbol"]),
+
+        _n("vgm_obraz",
+           "PEŁNY obraz instrumentu: wszystkie 62 pola pogrupowane w dziewięć kategorii, "
+           "jednym zapytaniem. Używaj, gdy chcesz zobaczyć całość naraz.",
+           {**sym, **interw}, ["symbol"]),
+
+        _n("vgm_pola",
+           "Spis dostępnych pól z podziałem na grupy — sprawdź tu, zanim zgadniesz nazwę."),
+
+        # ── położenie i układ ───────────────────────────────────────────
+        _n("vgm_polozenie",
+           "Gdzie stoi cena względem swoich odniesień, w procentach: miejsce w kanale "
+           "Bollingera, miejsce w zakresie rocznym, odchylenie od średnich 20/50/200, "
+           "szerokość kanału, zmienność ATR jako procent ceny.",
+           {**sym, **interw}, ["symbol"]),
+
+        _n("vgm_srednie",
+           "Układ sześciu średnich wykładniczych (5 do 200): ile par stoi w kolejności "
+           "rosnącej, ile w malejącej. Zwraca surowy fakt, nie nazywa go trendem.",
+           {**sym, **interw}, ["symbol"]),
+
+        # ── wiele interwałów ────────────────────────────────────────────
+        _n("vgm_mtf",
+           "Ten sam wskaźnik na kilku interwałach naraz, jednym zapytaniem. "
+           "Zmierzone interwały: 1, 5, 15, 60, 240, 1W.",
+           {**sym,
+            "wskazniki": dict(L, description="np. RSI, ADX, Recommend.All"),
+            "interwaly": L}, ["symbol"]),
+
+        _n("vgm_zgodnosc",
+           "Ile interwałów wskazuje w tę samą stronę. Zwraca zliczenie: które powyżej "
+           "progu kupna, które poniżej progu sprzedaży. CELOWO nie podejmuje decyzji "
+           "handlowej — próg należy do strategii i wymaga własnego pomiaru.",
+           {**sym, "interwaly": L,
+            "prog_kupno": {"type": "number", "default": 55},
+            "prog_sprzedaz": {"type": "number", "default": 45}}, ["symbol"]),
+
+        _n("vgm_zgodnosc_pelna",
+           "Tabela wielu wskaźników na wielu interwałach naraz — rozszerzenie vgm_zgodnosc "
+           "na dowolny zestaw. Zwraca wartości i listę brakujących.",
+           {**sym, "wskazniki": L, "interwaly": L}, ["symbol"]),
+
+        # ── porównania ──────────────────────────────────────────────────
+        _n("vgm_wiele",
+           "Kilka instrumentów w JEDNYM zapytaniu zamiast kilku osobnych.",
+           {"symbole": L, "pola": L}, ["symbole"]),
+
+        _n("vgm_porownaj",
+           "Instrumenty obok siebie, posortowane po sile ruchu.",
+           {"symbole": L, "pola": L}, ["symbole"]),
+
+        # ── skany rynku ─────────────────────────────────────────────────
+        _n("vgm_skan_wyprzedane",
+           "Instrumenty z RSI poniżej progu.",
+           {**rynek, "prog": {"type": "number", "default": 30}, **ile}),
+
+        _n("vgm_skan_wykupione",
+           "Instrumenty z RSI powyżej progu.",
+           {**rynek, "prog": {"type": "number", "default": 70}, **ile}),
+
+        _n("vgm_skan_trend",
+           "Instrumenty z ADX powyżej progu — silny ruch kierunkowy. "
+           "Zwraca też ADX+DI i ADX-DI, żeby było widać stronę.",
+           {**rynek, "prog_adx": {"type": "number", "default": 30}, **ile}),
+
+        _n("vgm_skan_wolumen",
+           "Instrumenty z wolumenem powyżej wielokrotności średniej z dziesięciu dni.",
+           {**rynek, "krotnosc": {"type": "number", "default": 2.0}, **ile}),
+
+        _n("vgm_skan",
+           "Dowolny filtr TradingView — pełna swoboda. Warunki w formacie "
+           '[{"left":"RSI","operation":"less","right":30}]. '
+           "Operacje: less, greater, equal, in_range, above_pct, below_pct.",
+           {**rynek,
+            "warunki": {"type": "array", "items": {"type": "object"}},
+            "pola": L, **ile}, ["rynek", "warunki"]),
     ]
 
 
 @serwer.call_tool()
-async def wywolaj(nazwa: str, argumenty: dict) -> list[TextContent]:
-    def odpowiedz(obiekt) -> list[TextContent]:
-        return [TextContent(type="text",
-                            text=json.dumps(obiekt, ensure_ascii=False, indent=1))]
+async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
+    def ok(x):
+        return [TextContent(type="text", text=json.dumps(x, ensure_ascii=False, indent=1))]
 
     try:
         if nazwa == "vgm_odczyt":
-            return odpowiedz(dane.odczyt(argumenty["symbol"], argumenty.get("pola")))
-        if nazwa == "vgm_wiele":
-            return odpowiedz(dane.wiele(argumenty["symbole"], argumenty.get("pola")))
-        if nazwa == "vgm_przeglad":
-            return odpowiedz(dane.przeglad(
-                argumenty.get("rynek", "forex"),
-                argumenty.get("warunki"),
-                None,
-                argumenty.get("ile", 30),
-            ))
+            return ok(dane.odczyt(a["symbol"], a.get("pola")))
+        if nazwa == "vgm_obraz":
+            return ok(analiza.obraz(a["symbol"], a.get("interwal")))
+        if nazwa == "vgm_pola":
+            return ok({g: lista for g, lista in pola.GRUPY.items()}
+                      | {"interwaly_zmierzone": pola.INTERWALY_PEWNE})
+        if nazwa == "vgm_polozenie":
+            return ok(analiza.polozenie(a["symbol"], a.get("interwal")))
+        if nazwa == "vgm_srednie":
+            return ok(analiza.uklad_srednich(a["symbol"], a.get("interwal")))
         if nazwa == "vgm_mtf":
-            return odpowiedz(dane.mtf(
-                argumenty["symbol"],
-                argumenty.get("wskazniki"),
-                argumenty.get("interwaly"),
-            ))
+            return ok(dane.mtf(a["symbol"], a.get("wskazniki"), a.get("interwaly")))
         if nazwa == "vgm_zgodnosc":
-            return odpowiedz(dane.zgodnosc(
-                argumenty["symbol"],
-                argumenty.get("interwaly"),
-                argumenty.get("prog_kupno", 55),
-                argumenty.get("prog_sprzedaz", 45),
-            ))
-        return odpowiedz({"blad": f"nieznane narzędzie: {nazwa}"})
+            return ok(dane.zgodnosc(a["symbol"], a.get("interwaly"),
+                                    a.get("prog_kupno", 55), a.get("prog_sprzedaz", 45)))
+        if nazwa == "vgm_zgodnosc_pelna":
+            return ok(analiza.zgodnosc_pelna(a["symbol"], a.get("wskazniki"),
+                                             a.get("interwaly")))
+        if nazwa == "vgm_wiele":
+            return ok(dane.wiele(a["symbole"], a.get("pola")))
+        if nazwa == "vgm_porownaj":
+            return ok(analiza.porownaj(a["symbole"], a.get("pola")))
+        if nazwa == "vgm_skan_wyprzedane":
+            return ok(analiza.skan_wyprzedane(a.get("rynek", "forex"),
+                                              a.get("prog", 30), a.get("ile", 20)))
+        if nazwa == "vgm_skan_wykupione":
+            return ok(analiza.skan_wykupione(a.get("rynek", "forex"),
+                                             a.get("prog", 70), a.get("ile", 20)))
+        if nazwa == "vgm_skan_trend":
+            return ok(analiza.skan_silny_trend(a.get("rynek", "forex"),
+                                               a.get("prog_adx", 30), a.get("ile", 20)))
+        if nazwa == "vgm_skan_wolumen":
+            return ok(analiza.skan_wolumen(a.get("rynek", "forex"),
+                                           a.get("krotnosc", 2.0), a.get("ile", 20)))
+        if nazwa == "vgm_skan":
+            return ok(analiza.skan_wlasny(a["rynek"], a["warunki"],
+                                          a.get("pola"), a.get("ile", 30)))
+        return ok({"blad": f"nieznane narzędzie: {nazwa}"})
 
     except dane.BladTV as e:
-        # Błąd TradingView oddajemy w całości — wywołujący ma wiedzieć, co się stało,
-        # a nie dostać pustą odpowiedź do interpretacji.
-        return odpowiedz({"blad": str(e), "narzedzie": nazwa})
+        return ok({"blad": str(e), "narzedzie": nazwa})
     except KeyError as e:
-        return odpowiedz({"blad": f"brakuje wymaganego pola: {e}", "narzedzie": nazwa})
+        return ok({"blad": f"brakuje wymaganego pola: {e}", "narzedzie": nazwa})
 
 
 async def main():
