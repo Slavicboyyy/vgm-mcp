@@ -1,30 +1,27 @@
 # VGM MCP
 
-Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
+Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki,
+a przy tym potrafi sprawdzić, czy sygnał jest cokolwiek wart.
 
-Czterdzieści trzy narzędzia plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
-naraz, jednym zapytaniem.
+![vgm w terminalu](obrazy/terminal.png)
 
-Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
-z wykresem.
-
----
-
-## Dlaczego powstał
-
-Większość narzędzi tego typu wymaga uruchomionej aplikacji TradingView albo własnego
-okna przeglądarki. Nie ruszą więc na serwerze ani w tle, a już na pewno nie bez
-człowieka przy monitorze.
-
-Drugi problem jest cichszy: sięgają po garść pól, zwykle sześć albo dwanaście.
-TradingView udostępnia publicznie znacznie więcej. Przy sprawdzeniu okazało się,
-że działa sześćdziesiąt dwa.
-
-VGM bierze wszystkie i nie potrzebuje do tego okna.
+Czterdzieści trzy narzędzia, dziewięćdziesiąt jeden pól danych, dziesięć rynków.
 
 ---
 
-## Co potrafi
+## Po co
+
+Większość narzędzi tego typu wymaga uruchomionej aplikacji TradingView albo
+własnego okna przeglądarki, więc nie ruszą na serwerze ani w tle. Sięgają też
+po garść pól, zwykle sześć albo dwanaście, choć publicznie dostępnych jest
+dziewięćdziesiąt jeden.
+
+VGM bierze wszystkie i nie potrzebuje do tego okna. Do tego ma warstwę, której
+nie ma nikt inny: sprawdzającą, czy sygnał daje przewagę, czy tylko tak wygląda.
+
+---
+
+## Narzędzia
 
 ### Odczyt
 
@@ -156,135 +153,7 @@ Dwa pierwsze wyglądają świetnie i oba odpadają na liczbie wejść. Trzeci ma
 wejść, ale traci po spreadzie. Narzędzie mówi to wprost, zamiast wybierać
 najładniejszy wiersz.
 
-### Pierwszy warunek, który przeszedł
-
-Pomiar na złocie, cztery przedziały czasu, dane zweryfikowane:
-
-```
-COMEX:GC1!, warunek: położenie powyżej 90% kanału Bollingera
-
-15 min    41 wejść    +0,1964%   58,5% trafień   przewaga 0,1651%   przeszedł
-60 min    34 wejścia  +0,3421%   73,5% trafień   przewaga 0,4213%   przeszedł
-240 min   37 wejść    +0,2618%   54,1% trafień   przewaga -0,018%   odpadł
-dzienny   54 wejścia  +2,0130%   59,3% trafień   przewaga 1,0435%   przeszedł
-
-Na EURUSD i bitcoinie ten sam warunek nie przeszedł.
-```
-
-Ten sam warunek na czterech surowcach, przedział dzienny:
-
-```
-złoto    54 wejścia  +2,0113%   59,3% trafień   przewaga +0,618    przeszedł
-srebro   67 wejść    +1,9925%   67,2% trafień   przewaga -1,1417   odpadł
-miedź    56 wejść    +0,4569%   58,9% trafień   przewaga -1,2906   odpadł
-ropa     34 wejścia  +3,1606%   55,9% trafień   przewaga +1,2515   przeszedł
-```
-
-Srebro warto obejrzeć uważnie. Ma najwyższy odsetek trafień w całym zestawieniu,
-67,2 procent, i prawie dwa procent zwrotu. A mimo to odpada, bo w badanym okresie
-rosło tak mocno, że losowe wejście dawało jeszcze więcej. Sygnał nie dodawał nic
-ponad samo bycie na rynku.
-
-Bez porównania z losowym wejściem srebro wyglądałoby na najlepszy wiersz tabeli.
-Tak właśnie powstają strategie, które świetnie wyglądają w hossie.
-
-Podsumowując: dwa surowce z czterech, trzy przedziały z czterech. Warunek nie jest
-uniwersalny i nie ma tu dowodu na przewagę, bo trzysta świec to mało, nie było
-sprawdzenia poza próbą, a poślizg nie wchodzi do rachunku. Jest to natomiast
-pierwszy kandydat, który przetrwał wszystkie cztery bariery na kilku instrumentach
-i przedziałach naraz.
-
-### Sygnał czy sam trend
-
-Placebo losowe ma słabość: sygnał może je bić, a mimo to przegrywać
-z nicnierobieniem. Dlatego `vgm_sygnal_czy_trend` porównuje cztery liczby
-naraz — warunek, warunek odwrotny, samo trzymanie i losowe wejście.
-
-Prawdziwy sygnał bije trzymanie, a jego odwrotność wypada gorzej. Sam trend
-daje podobny wynik niezależnie od warunku.
-
-Zmierzone na przedziale dziennym, warunek: powyżej 90% kanału Bollingera:
-
-```
-złoto    warunek 2,0118%   odwrotny 0,6022%    trzymanie 1,1922%
-         bije trzymanie o 0,82 pp, odwrotność gorsza o 1,41 pp -> sygnał
-
-ropa     warunek 3,1606%   odwrotny -0,0362%   trzymanie 1,6629%
-         bije trzymanie o 1,50 pp, odwrotność gorsza o 3,20 pp -> sygnał
-
-srebro   warunek 1,9928%   odwrotny -0,8155%   trzymanie 2,8028%
-         trzymanie BIJE warunek -> sygnał nie wnosi nic
-```
-
-Srebro pokazuje, po co to kryterium istnieje. Warunek dawał tam prawie dwa
-procent i sześćdziesiąt siedem procent trafień, ale samo trzymanie dawało
-dwa i osiem dziesiątych procent. Aktywne handlowanie wypadało gorzej niż
-nierobienie niczego.
-
-Próg kanału ma znaczenie tylko na ropie. Na złocie zwrot jest niemal płaski
-między progiem 70 a 95 (od 2,04 do 2,20 procent), więc sam próg niewiele wnosi.
-Na ropie zwrot rośnie do progu 80 i znika przy 95, gdzie zostaje dwadzieścia
-siedem wejść i zwrot 0,23 procent.
-
-### Jak długo trzymać
-
-Ten sam warunek potrafi działać odwrotnie na krótkim terminie i dobrze
-na długim. Zmierzone na przedziale dziennym:
-
-```
-ZŁOTO   świec    warunek   odwrotny   trzymanie   rozstęp
-            5     0,4694     1,0684      0,5304    -0,599   dół bije górę
-           10     2,0092     0,6022      1,1917     1,407
-           20     4,1933     0,0189      2,4532     4,174
-           40     6,8633    -0,6285      3,8912     7,492
-
-ROPA        5     2,2618     0,1174      0,8410     2,144
-           40    27,3414     3,7692      7,1263    23,572
-```
-
-Na złocie warunek nie działa przy trzech i pięciu świecach, a przy pięciu
-działa wręcz odwrotnie: dół kanału daje więcej niż góra. Zaczyna działać
-od dziesięciu świec i rośnie dalej.
-
-Rosnący zwrot sam w sobie niczego nie dowodzi, bo przy dłuższym trzymaniu
-rośnie wszystko, także zwykłe trzymanie. Rozstrzyga to, że warunek odwrotny
-zostaje płaski albo schodzi pod zero, gdy trzymanie daje prawie cztery procent.
-Sam trend podnosiłby obie strony.
-
-### Nakładanie pozycji, czyli jak sam się oszukałem
-
-Wszystkie liczby wyżej mówią, co dzieje się średnio po sygnale. To poprawne
-pytanie, ale nie odpowiada na inne: ile da się na tym zarobić naprawdę.
-
-Przy trzymaniu przez czterdzieści świec wejścia z sąsiednich dni to niemal
-ta sama pozycja. Sumowanie ich jak niezależnych transakcji zawyża wynik
-kilkukrotnie. Zmierzone: sumowanie z nakładaniem dawało 322 procent na złocie
-przy trzydziestu procentach z kupna i trzymania. Ta liczba powinna była od razu
-zapalić lampkę.
-
-Po policzeniu transakcji bez nakładania, czyli jedna pozycja naraz:
-
-```
-ZŁOTO   4 transakcje (22 wejścia pominięte, bo pozycja była otwarta)
-        sygnał 30,36%   kupno i trzymanie 30,29%
-        przewaga znika przy koszcie 0,1% na transakcję
-
-ROPA    3 transakcje (22 pominięte)
-        sygnał 32,48%   kupno i trzymanie 37,13%
-        przegrywa nawet przy koszcie bliskim zeru
-```
-
-Cztery transakcje to poniżej progu dwudziestu wejść, który sam sobie
-postawiłem. Wniosek jest więc taki: **na tych danych sygnał nie daje przewagi
-możliwej do wykorzystania**. Wcześniejsze 2,97 i 20,21 punktu procentowego
-brały się z liczenia tej samej pozycji wiele razy.
-
-Pomiar średniego zwrotu po sygnale zostaje poprawny i przydatny. Zmienia się
-tylko to, jak go czytać: mówi o zachowaniu rynku po warunku, nie o zysku
-z handlu.
----
-
-## Dane, do których sięga
+## Pola danych
 
 Sześćdziesiąt dwa pola, wszystkie sprawdzone na żywym rynku:
 
@@ -337,7 +206,7 @@ która grupa pól przestała odpowiadać.
 
 ---
 
-## Z kodu, nie z opisu
+## Przykłady
 
 ```python
 from src import analiza
@@ -402,7 +271,7 @@ Każde polecenie przyjmuje `--json`, gdy wynik ma iść dalej do skryptu.
 
 ---
 
-## Czego tu nie ma
+## Czego brakuje
 
 Lista jawna. Lepiej wiedzieć z góry, niż odkryć w trakcie.
 
@@ -421,7 +290,7 @@ na coś, czego nie zbudowałem.
 
 ---
 
-## Co trzeba wiedzieć, zanim się użyje
+## Ograniczenia
 
 🔴 **Pułapka, na którą trzeba uważać.** Zmiana instrumentu przez
 `vgm_wykres_symbol` zmienia nazwę natychmiast, ale seria świec potrafi
@@ -444,7 +313,6 @@ wtedy identyczne wyniki pomiaru.
 `vgm_wykres_przelacz` sprawdza więc dwie rzeczy naraz: czy cena zgadza się
 z publicznym punktem i czy **odstęp między świecami odpowiada przedziałowi**.
 Sama nazwa nie wystarcza w żadnym z tych dwóch przypadków.
-
 
 
 **To nie są ceny brokera.** Dane idą z publicznego punktu TradingView i są liczone
