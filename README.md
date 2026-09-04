@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Czterdzieści dwa narzędzia plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
+Czterdzieści trzy narzędzia plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -129,6 +129,7 @@ Ta grupa nie liczy sygnału. Sprawdza, czy sygnał jest cokolwiek wart.
 | `vgm_sygnal_czy_trend` | czy warunek wnosi coś ponad sam trend | złoto, ropa, srebro |
 | `vgm_odniesienie_trzymanie` | ile daje samo trzymanie bez sygnału | 265 wejść |
 | `vgm_jak_dlugo_trzymac` | po ilu świecach sygnał daje najwięcej | złoto i ropa, 5 długości |
+| `vgm_koszt_a_przewaga` | przy jakim koszcie sygnał traci sens | złoto i ropa, 6 poziomów |
 
 Cztery warunki, wszystkie muszą być spełnione naraz:
 
@@ -249,6 +250,38 @@ Rosnący zwrot sam w sobie niczego nie dowodzi, bo przy dłuższym trzymaniu
 rośnie wszystko, także zwykłe trzymanie. Rozstrzyga to, że warunek odwrotny
 zostaje płaski albo schodzi pod zero, gdy trzymanie daje prawie cztery procent.
 Sam trend podnosiłby obie strony.
+
+### Nakładanie pozycji, czyli jak sam się oszukałem
+
+Wszystkie liczby wyżej mówią, co dzieje się średnio po sygnale. To poprawne
+pytanie, ale nie odpowiada na inne: ile da się na tym zarobić naprawdę.
+
+Przy trzymaniu przez czterdzieści świec wejścia z sąsiednich dni to niemal
+ta sama pozycja. Sumowanie ich jak niezależnych transakcji zawyża wynik
+kilkukrotnie. Zmierzone: sumowanie z nakładaniem dawało 322 procent na złocie
+przy trzydziestu procentach z kupna i trzymania. Ta liczba powinna była od razu
+zapalić lampkę.
+
+Po policzeniu transakcji bez nakładania, czyli jedna pozycja naraz:
+
+```
+ZŁOTO   4 transakcje (22 wejścia pominięte, bo pozycja była otwarta)
+        sygnał 30,36%   kupno i trzymanie 30,29%
+        przewaga znika przy koszcie 0,1% na transakcję
+
+ROPA    3 transakcje (22 pominięte)
+        sygnał 32,48%   kupno i trzymanie 37,13%
+        przegrywa nawet przy koszcie bliskim zeru
+```
+
+Cztery transakcje to poniżej progu dwudziestu wejść, który sam sobie
+postawiłem. Wniosek jest więc taki: **na tych danych sygnał nie daje przewagi
+możliwej do wykorzystania**. Wcześniejsze 2,97 i 20,21 punktu procentowego
+brały się z liczenia tej samej pozycji wiele razy.
+
+Pomiar średniego zwrotu po sygnale zostaje poprawny i przydatny. Zmienia się
+tylko to, jak go czytać: mówi o zachowaniu rynku po warunku, nie o zysku
+z handlu.
 ---
 
 ## Dane, do których sięga

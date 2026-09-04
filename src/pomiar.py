@@ -627,6 +627,97 @@ def jak_dlugo_trzymac(wskaznik: str = "Bollinger", prog: float = 90,
     }
 
 
+def koszt_a_przewaga(wskaznik: str = "Bollinger", prog: float = 90,
+                     kierunek: str = "powyzej", po_ilu: int = 40,
+                     ile_swiec: int = 300,
+                     koszty: list[float] | None = None) -> dict:
+    """Przy jakim koszcie transakcji sygnał przestaje mieć sens.
+
+    Uwaga na pułapkę, w którą sam wpadłem: nie wystarczy odjąć spread od obu
+    stron porównania. Sygnał wchodzi i wychodzi kilkadziesiąt razy, a kupno
+    z trzymaniem płaci koszt RAZ. Przy porównaniu per wejście koszt skraca się
+    po obu stronach i różnica wychodzi stała, co niczego nie mówi.
+
+    Dlatego liczymy tu inaczej: bierzemy sumaryczny wynik obu podejść na tym
+    samym okresie i obciążamy każde jego prawdziwą liczbą transakcji.
+    """
+    import analiza
+
+    koszty = koszty or [0.02, 0.05, 0.1, 0.2, 0.5, 1.0]
+    swiece = analiza._swiece_z_wykresu(ile_swiec)
+    if len(swiece) < 60:
+        raise BladPomiaru(f"za mało świec: {len(swiece)}")
+
+    wartosci = _policz(wskaznik, swiece)
+    od = 25
+
+    wejscia = []
+    for i in range(od, len(swiece) - po_ilu):
+        w = wartosci[i]
+        if w is None:
+            continue
+        if (kierunek == "ponizej" and w < prog) or (kierunek == "powyzej" and w > prog):
+            wejscia.append(i)
+
+    if not wejscia:
+        return {"wejsc": 0, "uwaga": "warunek nie wystąpił ani razu"}
+
+    # Transakcje BEZ NAKŁADANIA: po wejściu czekamy do wyjścia, zanim wejdziemy
+    # znowu. Bez tego wejście na świecy 30 i 31 liczyłoby się dwa razy, choć to
+    # prawie ta sama pozycja — suma zawyżałaby wynik kilkukrotnie.
+    zwroty = []
+    wolne_od = 0
+    pominietych = 0
+    for i in wejscia:
+        if i < wolne_od:
+            pominietych += 1
+            continue
+        if i + po_ilu >= len(swiece):
+            continue
+        we, wy = swiece[i]["zamkniecie"], swiece[i + po_ilu]["zamkniecie"]
+        if we:
+            zwroty.append((wy - we) / we * 100)
+            wolne_od = i + po_ilu
+
+    # kupno z trzymaniem: jedno wejście na początku, jedno wyjście na końcu
+    poczatek, koniec = swiece[od]["zamkniecie"], swiece[-1]["zamkniecie"]
+    trzymanie_bez_kosztu = (koniec - poczatek) / poczatek * 100
+
+    wiersze = []
+    for k in koszty:
+        suma_sygnalu = sum(z - k for z in zwroty)
+        trzymanie = trzymanie_bez_kosztu - k        # koszt płacony raz
+        wiersze.append({
+            "koszt_proc": k,
+            "sygnal_suma_proc": round(suma_sygnalu, 3),
+            "sygnal_srednio_proc": round(suma_sygnalu / len(zwroty), 4),
+            "trzymanie_proc": round(trzymanie, 3),
+            "sygnal_lepszy": suma_sygnalu > trzymanie,
+        })
+
+    dziala = [w["koszt_proc"] for w in wiersze if w["sygnal_lepszy"]]
+    granica = max(dziala) if dziala else None
+
+    return {
+        "warunek": f"{wskaznik} {kierunek} {prog}",
+        "po_swiecach": po_ilu,
+        "transakcji_sygnalu": len(zwroty),
+        "wejsc_pominietych_bo_pozycja_otwarta": pominietych,
+        "transakcji_trzymania": 1,
+        "trzymanie_bez_kosztu_proc": round(trzymanie_bez_kosztu, 3),
+        "warianty": wiersze,
+        "dziala_do_kosztu_proc": granica,
+        "wniosek": (
+            f"sygnał robi {len(zwroty)} transakcji bez nakładania "
+            f"({pominietych} wejść pominiętych, bo pozycja była już otwarta), "
+            f"kupno z trzymaniem jedną. "
+            + (f"Sygnał wygrywa do kosztu {granica}% na transakcję."
+               if granica is not None else
+               "Sygnał przegrywa z trzymaniem nawet przy najniższym badanym koszcie.")
+        ),
+    }
+
+
 def _demo():
     print("Pomiar: czy RSI poniżej 30 cokolwiek zapowiada\n")
     w = zmierz_prog("RSI", 30, "ponizej", po_ilu=10)
