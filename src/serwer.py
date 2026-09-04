@@ -54,18 +54,18 @@ async def lista_narzedzi() -> list[Tool]:
     return [
         # ── odczyt ──────────────────────────────────────────────────────
         _n("vgm_odczyt",
-           "Wartości wybranych pól dla instrumentu. 62 dostępne pola: cena, wolumen, "
+           "Wartości wybranych pól dla instrumentu. 91 dostępnych pól: cena, wolumen, "
            "oscylatory pędu, wskaźniki trendu, średnie, zmienność, poziomy, wyniki, ocena.",
            {**sym, "pola": dict(L, description="Nazwy pól. Pominięte = zestaw domyślny")},
            ["symbol"]),
 
         _n("vgm_obraz",
-           "PEŁNY obraz instrumentu: wszystkie 62 pola pogrupowane w dziewięć kategorii, "
+           "Pełny obraz instrumentu: wszystkie 91 pól pogrupowanych w dziewięć kategorii, "
            "jednym zapytaniem. Używaj, gdy chcesz zobaczyć całość naraz.",
            {**sym, **interw}, ["symbol"]),
 
         _n("vgm_obraz_pelny",
-           "WSZYSTKO o instrumencie w jednym wywołaniu: 91 pól, położenie ceny, "
+           "Wszystko o instrumencie w jednym wywołaniu: 91 pól, położenie ceny, "
            "układ średnich, zgodność przedziałów, a gdy przeglądarka jest dostępna "
            "— także stan wykresu i wartości wskaźników z niego. "
            "Bez przeglądarki zwraca samą część publiczną i mówi o tym wprost.",
@@ -101,7 +101,7 @@ async def lista_narzedzi() -> list[Tool]:
 
         _n("vgm_zgodnosc",
            "Ile interwałów wskazuje w tę samą stronę. Zwraca zliczenie: które powyżej "
-           "progu kupna, które poniżej progu sprzedaży. CELOWO nie podejmuje decyzji "
+           "progu kupna, które poniżej progu sprzedaży. Celowo nie podejmuje decyzji "
            "handlowej — próg należy do strategii i wymaga własnego pomiaru.",
            {**sym, "interwaly": L,
             "prog_kupno": {"type": "number", "default": 55},
@@ -114,7 +114,7 @@ async def lista_narzedzi() -> list[Tool]:
 
         # ── porównania ──────────────────────────────────────────────────
         _n("vgm_wiele",
-           "Kilka instrumentów w JEDNYM zapytaniu zamiast kilku osobnych.",
+           "Kilka instrumentów w jednym zapytaniu zamiast kilku osobnych.",
            {"symbole": L, "pola": L}, ["symbole"]),
 
         _n("vgm_porownaj",
@@ -160,7 +160,7 @@ async def lista_narzedzi() -> list[Tool]:
         Tool(name="vgm_wykres_zdrowie",
              description=("Czy da się sterować wykresem: czy przeglądarka odpowiada, "
                           "czy jest karta z TradingView, czy strona udostępnia API. "
-                          "SPRAWDŹ TO PRZED każdym innym narzędziem wykresu. "
+                          "Sprawdź to przed każdym innym narzędziem wykresu. "
                           "Port bierze ze zmiennej VGM_CDP_PORT."),
              inputSchema={"type": "object", "properties": {}}),
 
@@ -170,14 +170,14 @@ async def lista_narzedzi() -> list[Tool]:
              inputSchema={"type": "object", "properties": {}}),
 
         Tool(name="vgm_wykres_wartosci",
-             description=("Bieżące wartości WSZYSTKICH wskaźników z wykresu — także "
+             description=("Bieżące wartości wszystkich wskaźników z wykresu — także "
                           "własnych, napisanych w Pine, których publiczne API nie zna. "
                           "To główny powód, dla którego warstwa przeglądarki istnieje."),
              inputSchema={"type": "object", "properties": {}}),
 
         Tool(name="vgm_wykres_przelacz",
-             description=("Zmienia instrument i CZEKA, aż świece naprawdę do niego należą. "
-                          "UŻYWAJ TEGO zamiast vgm_wykres_symbol, gdy zaraz potem czytasz "
+             description=("Zmienia instrument i czeka, aż świece naprawdę do niego należą. "
+                          "Używaj tego zamiast vgm_wykres_symbol, gdy zaraz potem czytasz "
                           "świece albo liczysz statystykę. Zmierzone: sama zmiana symbolu "
                           "potrafi zostawić świece poprzedniego instrumentu, a nic tego nie "
                           "sygnalizuje. To narzędzie sprawdza je krzyżowo z ceną z publicznego "
@@ -217,7 +217,7 @@ async def lista_narzedzi() -> list[Tool]:
              description=("Dodaje wskaźnik na wykres po pełnej nazwie, dokładnie takiej "
                           'jak w oknie wyboru TradingView: "Relative Strength Index", '
                           '"Moving Average Exponential", "Volume". '
-                          "UWAGA, zmierzone: bez zalogowania TradingView liczy tylko JEDEN "
+                          "Uwaga, zmierzone: bez zalogowania TradingView liczy tylko jeden "
                           "wskaźnik naraz. Kolejne pojawiają się na liście, ale ich wartości "
                           "zostają puste. Usuń poprzedni przez vgm_wskaznik_usun albo zaloguj "
                           "się. Narzędzie czeka na dane i w odpowiedzi mówi, czy wskaźnik "
@@ -247,7 +247,7 @@ async def lista_narzedzi() -> list[Tool]:
                           "properties": {"ile": {"type": "integer", "default": 200}}}),
 
         Tool(name="vgm_zmierz_prog",
-             description=("Sprawdza, czy przekroczenie progu przez wskaźnik COKOLWIEK "
+             description=("Sprawdza, czy przekroczenie progu przez wskaźnik cokolwiek "
                           "zapowiada. Liczy zwrot po N świecach od wejścia, porównuje "
                           "z sygnałem losowym o tej samej częstości, dzieli okres na dwie "
                           "połowy i odejmuje spread. Odrzuca wynik przy mniej niż "
@@ -278,7 +278,7 @@ async def lista_narzedzi() -> list[Tool]:
 
         Tool(name="vgm_sygnal_czy_trend",
              description=("Rozstrzyga, czy warunek naprawdę coś wnosi, czy tylko łapie "
-                          "trend. Porównuje CZTERY liczby: warunek, warunek odwrotny, "
+                          "trend. Porównuje cztery liczby: warunek, warunek odwrotny, "
                           "samo trzymanie przez N świec i losowe wejście. Prawdziwy sygnał "
                           "bije trzymanie, a jego odwrotność wypada gorzej. Sam trend daje "
                           "podobny wynik niezależnie od warunku. To ostrzejsze kryterium "
@@ -293,7 +293,7 @@ async def lista_narzedzi() -> list[Tool]:
 
         Tool(name="vgm_koszt_a_przewaga",
              description=("Przy jakim koszcie transakcji sygnał przestaje mieć sens. "
-                          "Liczy transakcje BEZ NAKŁADANIA (jedna pozycja naraz) i obciąża "
+                          "Liczy transakcje BEZ nakładania (jedna pozycja naraz) i obciąża "
                           "każde podejście jego prawdziwą liczbą transakcji: sygnał płaci "
                           "koszt przy każdym wejściu, kupno z trzymaniem raz. "
                           "To zwykle zmienia wnioski — przy dłuższym trzymaniu sąsiednie "
@@ -309,7 +309,7 @@ async def lista_narzedzi() -> list[Tool]:
 
         Tool(name="vgm_jak_dlugo_trzymac",
              description=("Po ilu świecach sygnał daje najwięcej ponad samo trzymanie. "
-                          "Zmierzone: ten sam warunek potrafi działać ODWROTNIE na krótkim "
+                          "Zmierzone: ten sam warunek potrafi działać odwrotnie na krótkim "
                           "terminie i dobrze na długim. Porównuje różnicę wobec trzymania "
                           "i rozstęp wobec warunku odwrotnego, bo sam zwrot rośnie przy "
                           "dłuższym trzymaniu niezależnie od sygnału."),
@@ -328,7 +328,7 @@ async def lista_narzedzi() -> list[Tool]:
 
         Tool(name="vgm_przeglad_wskaznikow",
              description=("Siedem warunków na czterech wskaźnikach, jeden przebieg. "
-                          "Odpowiada na pytanie, czy KTÓRYKOLWIEK cokolwiek zapowiada "
+                          "Odpowiada na pytanie, czy którykolwiek cokolwiek zapowiada "
                           "na tym instrumencie i przedziale. Zwraca też te, które nie "
                           "przeszły, wraz z powodem."),
              inputSchema={"type": "object",
@@ -368,7 +368,7 @@ async def lista_narzedzi() -> list[Tool]:
 
         Tool(name="vgm_wykres_zrzut",
              description=("Zapisuje obraz wykresu do pliku PNG i zwraca ścieżkę. "
-                          "Pozwala OBEJRZEĆ wykres, nie tylko odczytać z niego liczby. "
+                          "Pozwala obejrzeć wykres, nie tylko odczytać z niego liczby. "
                           "Przed zrzutem zamyka okna zachęt zasłaniające widok."),
              inputSchema={"type": "object",
                           "properties": {
@@ -380,7 +380,7 @@ async def lista_narzedzi() -> list[Tool]:
              description=("Kompiluje kod Pine w kompilatorze TradingView i zwraca błędy "
                           "z dokładną linią i kolumną, plus podgląd wskazujący miejsce. "
                           "Bez przeglądarki i bez konta, odpowiedź w około sekundę. "
-                          "WYWOŁUJ TO ZAWSZE przed wstawieniem skryptu na wykres."),
+                          "Wywołuj to zawsze przed wstawieniem skryptu na wykres."),
              inputSchema={"type": "object",
                           "properties": {"kod": dict(S, description="Kod Pine Script")},
                           "required": ["kod"]}),
