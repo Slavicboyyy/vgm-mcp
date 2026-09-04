@@ -277,6 +277,19 @@ async def lista_narzedzi() -> list[Tool]:
                               "kierunek": dict(S, default="powyzej"),
                               "po_ilu": {"type": "integer", "default": 10}}}),
 
+        Tool(name="vgm_jak_dlugo_trzymac",
+             description=("Po ilu świecach sygnał daje najwięcej ponad samo trzymanie. "
+                          "Zmierzone: ten sam warunek potrafi działać ODWROTNIE na krótkim "
+                          "terminie i dobrze na długim. Porównuje różnicę wobec trzymania "
+                          "i rozstęp wobec warunku odwrotnego, bo sam zwrot rośnie przy "
+                          "dłuższym trzymaniu niezależnie od sygnału."),
+             inputSchema={"type": "object",
+                          "properties": {
+                              "wskaznik": dict(S, default="Bollinger"),
+                              "prog": {"type": "number", "default": 90},
+                              "kierunek": dict(S, default="powyzej"),
+                              "dlugosci": {"type": "array", "items": {"type": "integer"}}}}),
+
         Tool(name="vgm_odniesienie_trzymanie",
              description=("Ile daje samo trzymanie przez N świec, bez żadnego sygnału. "
                           "Uczciwszy punkt odniesienia niż losowe wejście."),
@@ -423,7 +436,7 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
         if nazwa.startswith(("vgm_wykres", "vgm_wskaznik", "vgm_swiece",
                              "vgm_zmierz", "vgm_porownaj_progi",
                              "vgm_przeglad_wskaznikow", "vgm_sygnal_czy_trend",
-                             "vgm_odniesienie_trzymanie")):
+                             "vgm_odniesienie_trzymanie", "vgm_jak_dlugo_trzymac")):
             import wykres  # dopiero tutaj — reszta działa bez websocket-client
 
             try:
@@ -472,6 +485,11 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                     return ok(pomiar.czy_sygnal_czy_trend(
                         a.get("wskaznik", "Bollinger"), a.get("prog", 90),
                         a.get("kierunek", "powyzej"), a.get("po_ilu", 10)))
+                if nazwa == "vgm_jak_dlugo_trzymac":
+                    import pomiar
+                    return ok(pomiar.jak_dlugo_trzymac(
+                        a.get("wskaznik", "Bollinger"), a.get("prog", 90),
+                        a.get("kierunek", "powyzej"), a.get("dlugosci")))
                 if nazwa == "vgm_odniesienie_trzymanie":
                     import pomiar
                     return ok(pomiar.odniesienie_trzymanie(a.get("po_ilu", 10)))

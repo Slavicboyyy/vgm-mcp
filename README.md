@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Czterdzieści jeden narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
+Czterdzieści dwa narzędzia plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -128,6 +128,7 @@ Ta grupa nie liczy sygnału. Sprawdza, czy sygnał jest cokolwiek wart.
 | `vgm_przeglad_wskaznikow` | siedem warunków jednym przebiegiem | GBPUSD 1h, 300 świec |
 | `vgm_sygnal_czy_trend` | czy warunek wnosi coś ponad sam trend | złoto, ropa, srebro |
 | `vgm_odniesienie_trzymanie` | ile daje samo trzymanie bez sygnału | 265 wejść |
+| `vgm_jak_dlugo_trzymac` | po ilu świecach sygnał daje najwięcej | złoto i ropa, 5 długości |
 
 Cztery warunki, wszystkie muszą być spełnione naraz:
 
@@ -223,6 +224,31 @@ Próg kanału ma znaczenie tylko na ropie. Na złocie zwrot jest niemal płaski
 między progiem 70 a 95 (od 2,04 do 2,20 procent), więc sam próg niewiele wnosi.
 Na ropie zwrot rośnie do progu 80 i znika przy 95, gdzie zostaje dwadzieścia
 siedem wejść i zwrot 0,23 procent.
+
+### Jak długo trzymać
+
+Ten sam warunek potrafi działać odwrotnie na krótkim terminie i dobrze
+na długim. Zmierzone na przedziale dziennym:
+
+```
+ZŁOTO   świec    warunek   odwrotny   trzymanie   rozstęp
+            5     0,4694     1,0684      0,5304    -0,599   dół bije górę
+           10     2,0092     0,6022      1,1917     1,407
+           20     4,1933     0,0189      2,4532     4,174
+           40     6,8633    -0,6285      3,8912     7,492
+
+ROPA        5     2,2618     0,1174      0,8410     2,144
+           40    27,3414     3,7692      7,1263    23,572
+```
+
+Na złocie warunek nie działa przy trzech i pięciu świecach, a przy pięciu
+działa wręcz odwrotnie: dół kanału daje więcej niż góra. Zaczyna działać
+od dziesięciu świec i rośnie dalej.
+
+Rosnący zwrot sam w sobie niczego nie dowodzi, bo przy dłuższym trzymaniu
+rośnie wszystko, także zwykłe trzymanie. Rozstrzyga to, że warunek odwrotny
+zostaje płaski albo schodzi pod zero, gdy trzymanie daje prawie cztery procent.
+Sam trend podnosiłby obie strony.
 ---
 
 ## Dane, do których sięga

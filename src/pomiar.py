@@ -563,6 +563,70 @@ def czy_sygnal_czy_trend(wskaznik: str = "Bollinger", prog: float = 90,
     }
 
 
+def jak_dlugo_trzymac(wskaznik: str = "Bollinger", prog: float = 90,
+                      kierunek: str = "powyzej",
+                      dlugosci: list[int] | None = None,
+                      ile_swiec: int = 300, spread_proc: float = 0.02) -> dict:
+    """Po ilu świecach sygnał daje najwięcej ponad samo trzymanie.
+
+    Zmierzone: ten sam warunek potrafi działać odwrotnie na krótkim terminie
+    i dobrze na długim. Na złocie przy pięciu świecach dół kanału bił górę,
+    a przy czterdziestu góra była lepsza o siedem punktów procentowych.
+
+    Sama wysokość zwrotu nie wystarcza, bo przy dłuższym trzymaniu rośnie
+    wszystko. Liczy się różnica wobec trzymania i rozstęp wobec warunku
+    odwrotnego.
+    """
+    dlugosci = dlugosci or [3, 5, 10, 20, 40]
+    wiersze = []
+
+    for po in dlugosci:
+        try:
+            r = czy_sygnal_czy_trend(wskaznik, prog, kierunek, po,
+                                     ile_swiec, spread_proc)
+            wiersze.append({
+                "po_swiecach": po,
+                "zwrot_warunku_proc": r["zwrot_warunku_proc"],
+                "zwrot_odwrotnego_proc": r["zwrot_odwrotnego_proc"],
+                "zwrot_trzymania_proc": r["zwrot_trzymania_proc"],
+                "nad_trzymaniem_pp": r["nad_trzymaniem_pp"],
+                "rozstep_pp": r["rozstep_warunek_odwrotny_pp"],
+                "wejsc": r["wejsc_warunku"],
+                "dziala": (r["nad_trzymaniem_pp"] or 0) > 0
+                          and (r["rozstep_warunek_odwrotny_pp"] or 0) > 0,
+            })
+        except Exception as e:
+            wiersze.append({"po_swiecach": po, "blad": str(e)[:60]})
+
+    dzialajace = [w for w in wiersze if w.get("dziala")]
+    najlepszy = (max(dzialajace, key=lambda w: w["nad_trzymaniem_pp"])
+                 if dzialajace else None)
+    najkrotszy = min((w["po_swiecach"] for w in dzialajace), default=None)
+
+    if not dzialajace:
+        wniosek = "warunek nie bije trzymania na żadnej z badanych długości"
+    else:
+        wniosek = (
+            f"działa od {najkrotszy} świec wzwyż; najwięcej ponad trzymanie daje "
+            f"po {najlepszy['po_swiecach']} świecach ({najlepszy['nad_trzymaniem_pp']} pp "
+            f"przy {najlepszy['wejsc']} wejściach)"
+        )
+        nie_dziala = [w["po_swiecach"] for w in wiersze
+                      if "blad" not in w and not w.get("dziala")]
+        if nie_dziala:
+            wniosek += f". Nie działa przy: {nie_dziala} świec"
+
+    return {
+        "warunek": f"{wskaznik} {kierunek} {prog}",
+        "dlugosci": wiersze,
+        "dziala_od": najkrotszy,
+        "najlepsza_dlugosc": najlepszy["po_swiecach"] if najlepszy else None,
+        "wniosek": wniosek,
+        "uwaga": ("Przy dłuższym trzymaniu rosną wszystkie liczby, także trzymanie. "
+                  "Dlatego porównuj różnicę, nie sam zwrot."),
+    }
+
+
 def _demo():
     print("Pomiar: czy RSI poniżej 30 cokolwiek zapowiada\n")
     w = zmierz_prog("RSI", 30, "ponizej", po_ilu=10)
