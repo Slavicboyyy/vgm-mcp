@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Trzydzieści narzędzi plus polecenie w terminalu. Sześćdziesiąt dwa pola danych. Sześć przedziałów czasowych
+Trzydzieści narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -30,9 +30,9 @@ VGM bierze wszystkie i nie potrzebuje do tego okna.
 
 | narzędzie | do czego | sprawdzone na |
 |---|---|---|
-| `vgm_odczyt` | wybrane pola dla instrumentu | FX:EURUSD, 62 pola |
-| `vgm_obraz` | wszystkie 62 pola naraz, w dziewięciu grupach | FX:EURUSD |
-| `vgm_pola` | spis dostępnych pól, do sprawdzenia przed zgadywaniem nazwy | — |
+| `vgm_odczyt` | wybrane pola dla instrumentu | FX:EURUSD, 91 pól |
+| `vgm_obraz` | wszystkie 91 pól naraz, w dziewięciu grupach | FX:EURUSD |
+| `vgm_pola` | spis dostępnych pól, do sprawdzenia przed zgadywaniem nazwy | tylko wywołanie |
 
 ### Położenie ceny
 
@@ -97,7 +97,7 @@ Bez przeglądarki i bez konta.
 | narzędzie | do czego | sprawdzone na |
 |---|---|---|
 | `vgm_pine_sprawdz` | kompilacja z dokładną linią i kolumną błędu | kod poprawny, jeden błąd, dwa błędy |
-| `vgm_pine_sprawdz_plik` | to samo, z pliku na dysku | — |
+| `vgm_pine_sprawdz_plik` | to samo, z pliku na dysku | tylko wywołanie |
 | `vgm_pine_szkielet` | gotowy punkt wyjścia, sam się kompiluje | kompiluje się bez błędu |
 
 Sprawdzenie trwa około sekundy i wygląda tak:
@@ -118,17 +118,17 @@ Sześćdziesiąt dwa pola, wszystkie sprawdzone na żywym rynku:
 
 **Cena.** Otwarcie, zamknięcie, szczyt, dołek, luka, zmiana, VWAP
 **Wolumen.** Bieżący, średnia dziesięciodniowa, stosunek jednego do drugiego
-**Pęd.** RSI, RSI7, Stochastic K i D, Stochastic RSI, CCI, Momentum, Awesome, ROC, Ultimate, Williams
-**Trend.** ADX z obiema składowymi kierunkowymi, MACD z linią i histogramem, Parabolic SAR, Ichimoku
-**Średnie.** SMA i EMA po sześć każda, od 5 do 200, plus VWMA i Hull
-**Zmienność.** ATR, wstęgi Bollingera, siła wstęg, zmienność dzienna i tygodniowa
-**Poziomy.** Punkty zwrotne klasyczne i Fibonacciego, szczyt i dołek z roku
-**Wyniki.** Tydzień, miesiąc, od początku roku
-**Ocena.** Zbiorcza TradingView, osobno dla średnich i oscylatorów
+**Pęd.** RSI, RSI7, Stochastic K i D, Stochastic RSI K i D, CCI, Momentum, Awesome, ROC, Ultimate, Williams, przepływ pieniądza, przepływ Chaikina
+**Trend.** ADX z obiema składowymi kierunkowymi, MACD z linią i histogramem, Parabolic SAR, Aroon w górę i w dół, pełny Ichimoku (bazowa, konwersji, obie wyprzedzające)
+**Średnie.** SMA i EMA po siedem każda, od 5 do 200, plus VWMA i Hull
+**Zmienność.** ATR, wstęgi Bollingera, siła wstęg, zmienność dzienna, tygodniowa i miesięczna, kanały Donchiana i Keltnera
+**Poziomy.** Pięć systemów punktów zwrotnych (klasyczny, Fibonacciego, Woodiego, Camarilli, DeMarka) oraz szczyt i dołek z roku
+**Wyniki.** Tydzień, miesiąc, trzy i sześć miesięcy, od początku roku, rok, pięć lat
+**Ocena.** Zbiorcza TradingView, osobno dla średnich i oscylatorów, plus ocena siedmiu pojedynczych wskaźników
 
 Każde z tych pól przyjmuje przyrostek z przedziałem czasu. `RSI|240` daje RSI z czterech godzin. Zmierzone przedziały: 1, 5, 15, 60, 240 minut oraz tydzień.
 
-Sześćdziesiąt dwa pola razy sześć przedziałów to 372 wartości. Jedno zapytanie.
+Dziewięćdziesiąt jeden pól razy sześć przedziałów to 546 wartości. Jedno zapytanie.
 
 ---
 
@@ -156,7 +156,7 @@ Sprawdzenie bez klienta MCP:
 ```bash
 python3 src/dane.py      # warstwa danych
 python3 src/analiza.py   # warstwa analizy
-python3 src/pola.py      # sprawdza, czy wszystkie 62 pola nadal działają
+python3 src/pola.py      # sprawdza, czy wszystkie 91 pól nadal działają
 ```
 
 Ostatnie polecenie warto puścić, kiedy coś zacznie zwracać puste wartości. Powie,
@@ -194,7 +194,7 @@ Te same narzędzia bez klienta MCP:
 
 ```bash
 vgm odczyt FX:EURUSD              cena i wskaźniki
-vgm obraz FX:EURUSD               wszystkie 62 pola
+vgm obraz FX:EURUSD               wszystkie 91 pól
 vgm polozenie FX:EURUSD           miejsce ceny względem odniesień
 vgm mtf FX:EURUSD                 wskaźnik na kilku przedziałach
 vgm zgodnosc FX:EURUSD            ile przedziałów mówi to samo
@@ -221,7 +221,7 @@ Lista jawna. Lepiej wiedzieć z góry, niż odkryć w trakcie.
 | rysowanie na wykresie | sprawdzone: wywołanie przechodzi, ale nic się nie pojawia bez sesji |
 | Strategy Tester | wyniki są i tak tylko poglądowe, więc niski priorytet |
 
-Warstwa wykresu działa bez logowania w zakresie odczytu i sterowania. Zapisywanie
+Warstwa wykresu działa bez logowania w zakresie odczytu i sterowania, natomiast zapisywanie
 skryptów, alerty i listy obserwowanych wymagają zalogowanej sesji.
 
 Te rzeczy są zaplanowane, ale żadnej nie ma w kodzie. Nie chcę, żeby ktoś liczył

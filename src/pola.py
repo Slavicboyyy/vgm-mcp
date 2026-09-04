@@ -18,36 +18,50 @@ WOLUMEN = [
 ]
 
 PED = [                            # oscylatory pędu
-    "RSI", "RSI7", "Stoch.K", "Stoch.D", "Stoch.RSI.K",
+    "RSI", "RSI7", "Stoch.K", "Stoch.D", "Stoch.RSI.K", "Stoch.RSI.D",
     "CCI20", "Mom", "AO", "ROC", "UO", "W.R",
+    "MoneyFlow", "ChaikinMoneyFlow",
 ]
 
 TREND = [
     "ADX", "ADX+DI", "ADX-DI",     # siła trendu i kierunek
     "MACD.macd", "MACD.signal", "MACD.hist",
-    "P.SAR", "Ichimoku.BLine",
+    "P.SAR",
+    "Aroon.Up", "Aroon.Down",
+    # pełny Ichimoku: linia bazowa, konwersji i obie linie wyprzedzające
+    "Ichimoku.BLine", "Ichimoku.CLine", "Ichimoku.Lead1", "Ichimoku.Lead2",
 ]
 
 SREDNIE = [
-    "SMA5", "SMA10", "SMA20", "SMA50", "SMA100", "SMA200",
-    "EMA5", "EMA10", "EMA20", "EMA50", "EMA100", "EMA200",
+    "SMA5", "SMA10", "SMA20", "SMA30", "SMA50", "SMA100", "SMA200",
+    "EMA5", "EMA10", "EMA20", "EMA30", "EMA50", "EMA100", "EMA200",
     "VWMA", "HullMA9",
 ]
 
 ZMIENNOSC = [
     "ATR", "BB.upper", "BB.lower", "BBPower",
-    "Volatility.D", "Volatility.W",
+    "Volatility.D", "Volatility.W", "Volatility.M",
+    # kanały: Donchiana (skrajne ceny) i Keltnera (oparty na zmienności)
+    "DonchCh20.Upper", "DonchCh20.Lower",
+    "KltChnl.upper", "KltChnl.lower",
 ]
 
 POZIOMY = [
+    # cztery systemy punktów zwrotnych — każdy liczy je inaczej
     "Pivot.M.Classic.S1", "Pivot.M.Classic.R1",
     "Pivot.M.Fibonacci.S1", "Pivot.M.Fibonacci.R1",
+    "Pivot.M.Woodie.S1", "Pivot.M.Camarilla.S1", "Pivot.M.Demark.S1",
     "price_52_week_high", "price_52_week_low",
 ]
 
-WYNIK = ["Perf.W", "Perf.1M", "Perf.YTD"]
+WYNIK = ["Perf.W", "Perf.1M", "Perf.3M", "Perf.6M", "Perf.YTD", "Perf.Y", "Perf.5Y"]
 
-OCENA = ["Recommend.All", "Recommend.MA", "Recommend.Other"]
+OCENA = [
+    "Recommend.All", "Recommend.MA", "Recommend.Other",
+    # ocena osobno dla każdego wskaźnika: -1 sprzedaj, 0 neutralnie, 1 kupuj
+    "Rec.Stoch.RSI", "Rec.WR", "Rec.BBPower", "Rec.UO",
+    "Rec.Ichimoku", "Rec.VWMA", "Rec.HullMA9",
+]
 
 GRUPY = {
     "cena": CENA,
