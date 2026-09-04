@@ -136,9 +136,45 @@ def wykres_():
                 all(k in pierwsza for k in ("czas", "otwarcie", "szczyt", "dolek", "zamkniecie")))
 
 
+def kompletnosc_serwera():
+    """Czy każde zadeklarowane narzędzie ma obsługę w serwerze.
+
+    Zmierzone raz: narzędzie potrafi być w spisie, a wywołanie zwraca „nieznane
+    narzędzie", bo lista kierująca go nie obejmuje. Nic tego nie sygnalizuje —
+    spis wygląda kompletnie, testy ścieżkowe przechodzą.
+
+    Tu sprawdzamy sam rozdział wywołań, bez dotykania rynku, żeby test był szybki.
+    Pełny przebieg z prawdziwymi argumentami: .narzedzia/sprawdz_wszystkie.py
+    """
+    import asyncio
+
+    import serwer
+
+    print("\nkompletność serwera")
+
+    async def zbierz():
+        return [n.name for n in await serwer.lista_narzedzi()]
+
+    nazwy = asyncio.run(zbierz())
+    sprawdz("spis narzędzi niepusty", len(nazwy) > 0, f"{len(nazwy)} narzędzi")
+
+    async def bez_obslugi():
+        brak = []
+        for n in nazwy:
+            odp = await serwer.wywolaj(n, {})
+            tresc = odp[0].text
+            if "nieznane narzędzie" in tresc:
+                brak.append(n)
+        return brak
+
+    brak = asyncio.run(bez_obslugi())
+    sprawdz("każde narzędzie ma obsługę", not brak,
+            "wszystkie" if not brak else f"BEZ OBSŁUGI: {', '.join(brak)}")
+
+
 def main():
     print("Sprawdzenie VGM MCP")
-    for f in (dane_i_pola, rynki, analiza_, pine_, wykres_):
+    for f in (dane_i_pola, rynki, analiza_, pine_, wykres_, kompletnosc_serwera):
         try:
             f()
         except Exception as e:
