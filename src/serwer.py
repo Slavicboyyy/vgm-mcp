@@ -209,6 +209,35 @@ async def lista_narzedzi() -> list[Tool]:
              inputSchema={"type": "object",
                           "properties": {"ile": {"type": "integer", "default": 200}}}),
 
+        Tool(name="vgm_zmierz_prog",
+             description=("Sprawdza, czy przekroczenie progu przez wskaźnik COKOLWIEK "
+                          "zapowiada. Liczy zwrot po N świecach od wejścia, porównuje "
+                          "z sygnałem losowym o tej samej częstości, dzieli okres na dwie "
+                          "połowy i odejmuje spread. Odrzuca wynik przy mniej niż "
+                          "dwudziestu wejściach. Zwraca zdanie mówiące wprost, czy sygnał "
+                          "jest cokolwiek wart — także gdy nie jest."),
+             inputSchema={"type": "object",
+                          "properties": {
+                              "prog": {"type": "number", "default": 30},
+                              "kierunek": dict(S, description="ponizej albo powyzej",
+                                               default="ponizej"),
+                              "po_ilu": {"type": "integer", "default": 10},
+                              "ile_swiec": {"type": "integer", "default": 300},
+                              "spread_proc": {"type": "number", "default": 0.02}}}),
+
+        Tool(name="vgm_porownaj_progi",
+             description=("Ten sam pomiar na kilku progach naraz. Pokazuje, gdzie leży "
+                          "granica między liczbą wejść a siłą sygnału, zamiast zgadywać. "
+                          "Próg przechodzi tylko wtedy, gdy ma dodatni zwrot po spreadzie, "
+                          "bije sygnał losowy, jest zgodny w obu połowach okresu i ma co "
+                          "najmniej dwadzieścia wejść."),
+             inputSchema={"type": "object",
+                          "properties": {
+                              "progi": {"type": "array", "items": {"type": "number"}},
+                              "kierunek": dict(S, default="ponizej"),
+                              "po_ilu": {"type": "integer", "default": 10},
+                              "spread_proc": {"type": "number", "default": 0.02}}}),
+
         Tool(name="vgm_swiece_przedzialy",
              description=("Statystyka świec z kilku przedziałów czasu naraz. Przełącza "
                           "wykres na każdy, liczy i wraca na wyjściowy. Trwa kilka sekund "
@@ -323,7 +352,8 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                 return ok({"blad": str(e), "narzedzie": nazwa})
 
         # ── wykres ──────────────────────────────────────────────────────
-        if nazwa.startswith(("vgm_wykres", "vgm_wskaznik", "vgm_swiece")):
+        if nazwa.startswith(("vgm_wykres", "vgm_wskaznik", "vgm_swiece",
+                             "vgm_zmierz", "vgm_porownaj_progi")):
             import wykres  # dopiero tutaj — reszta działa bez websocket-client
 
             try:
@@ -347,6 +377,17 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                     return ok(wykres.swiece(a.get("ile", 100)))
                 if nazwa == "vgm_swiece_statystyka":
                     return ok(analiza.statystyka_swiec(a.get("ile", 200)))
+                if nazwa == "vgm_zmierz_prog":
+                    import pomiar
+                    return ok(pomiar.zmierz_prog(
+                        "RSI", a.get("prog", 30), a.get("kierunek", "ponizej"),
+                        a.get("po_ilu", 10), a.get("ile_swiec", 300),
+                        a.get("spread_proc", 0.02)))
+                if nazwa == "vgm_porownaj_progi":
+                    import pomiar
+                    return ok(pomiar.porownaj_progi(
+                        a.get("progi"), a.get("kierunek", "ponizej"),
+                        a.get("po_ilu", 10), 300, a.get("spread_proc", 0.02)))
                 if nazwa == "vgm_swiece_przedzialy":
                     return ok(analiza.swiece_wiele_przedzialow(
                         a.get("przedzialy"), a.get("ile", 100)))

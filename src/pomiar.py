@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""VGM MCP — pomiar. Sprawdza, czy sygnał cokolwiek przewiduje.
+
+Narzędzie, którego nie ma żaden inny serwer MCP do TradingView. Reszta pozwala
+sygnał policzyć. To pozwala sprawdzić, czy jest cokolwiek wart.
+
+Cztery zasady, każda po to, żeby nie oszukać samego siebie:
+
+1. **Placebo.** Ten sam pomiar na sygnale losowym, o tej samej częstości.
+   Jeśli prawdziwy nie bije placebo, nie ma przewagi.
+2. **Podział na dwie połowy.** Wynik z jednego okresu nic nie znaczy, dopóki
+   nie powtórzy się w drugim.
+3. **Koszt odjęty.** Spread wchodzi do rachunku. Sygnał zarabiający mniej niż
+   koszt wejścia jest stratny.
+4. **Licznik wejść.** Trzy trafienia na trzy próby to nie przewaga, to przypadek.
+
+Liczy na świecach z wykresu, więc działa na dowolnym instrumencie i przedziale,
+który wykres ma wczytany.
+"""
+from __future__ import annotations
+
+import random
+import statistics
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+
+class BladPomiaru(Exception):
+    """Za mało danych albo błędne ustawienia pomiaru."""
+
+
+def _wynik_po(swiece: list, wejscia: list[int], po_ilu: int,
+              spread_proc: float) -> dict:
+    """Co się działo po każdym wejściu, licząc w procentach ceny wejścia."""
+    zwroty = []
+    for i in wejscia:
+        if i + po_ilu >= len(swiece):
+            continue
+        wejscie = swiece[i]["zamkniecie"]
+        wyjscie = swiece[i + po_ilu]["zamkniecie"]
+        if not wejscie:
+            continue
+        zwrot = (wyjscie - wejscie) / wejscie * 100 - spread_proc
+        zwroty.append(zwrot)
+
+    if not zwroty:
+        return {"wejsc": 0}
+
+    dodatnie = sum(1 for z in zwroty if z > 0)
+    return {
+        "wejsc": len(zwroty),
+        "sredni_zwrot_proc": round(statistics.mean(zwroty), 4),
+        "mediana_proc": round(statistics.median(zwroty), 4),
+        "trafien_proc": round(dodatnie / len(zwroty) * 100, 1),
+        "najlepsze": round(max(zwroty), 4),
+        "najgorsze": round(min(zwroty), 4),
+        "odchylenie": round(statistics.pstdev(zwroty), 4) if len(zwroty) > 1 else 0,
+    }
+
+
+def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
+                po_ilu: int = 10, ile_swiec: int = 300,
+                spread_proc: float = 0.02, losowan: int = 20) -> dict:
+    """Czy przekroczenie progu przez wskaźnik cokolwiek zapowiada.
+
+    pole:        na razie tylko "RSI" — liczony na świecach z wykresu
+    prog:        wartość graniczna
+    kierunek:    "ponizej" albo "powyzej"
+    po_ilu:      ile świec po wejściu sprawdzamy wynik
+    spread_proc: koszt wejścia w procentach ceny
+    losowan:     ile powtórzeń placebo
+    """
+    import analiza
+
+    swiece = analiza._swiece_z_wykresu(ile_swiec)
+    if len(swiece) < 60:
+        raise BladPomiaru(f"za mało świec: {len(swiece)}, potrzeba co najmniej 60")
+
+    zamkniecia = [s["zamkniecie"] for s in swiece]
+    rsi = _rsi(zamkniecia, 14)
+
+    wejscia = []
+    for i in range(15, len(swiece) - po_ilu):
+        w = rsi[i]
+        if w is None:
+            continue
+        if (kierunek == "ponizej" and w < prog) or (kierunek == "powyzej" and w > prog):
+            wejscia.append(i)
+
+    if not wejscia:
+        return {"wejsc": 0,
+                "uwaga": f"warunek {pole} {kierunek} {prog} nie wystąpił ani razu"}
+
+    polowa = len(swiece) // 2
+    pierwsza = [i for i in wejscia if i < polowa]
+    druga = [i for i in wejscia if i >= polowa]
+
+    prawdziwy = _wynik_po(swiece, wejscia, po_ilu, spread_proc)
+
+    # placebo: tyle samo wejść, ale w losowych miejscach
+    losowe = []
+    for _ in range(losowan):
+        prob = random.sample(range(15, len(swiece) - po_ilu),
+                             min(len(wejscia), len(swiece) - po_ilu - 16))
+        w = _wynik_po(swiece, prob, po_ilu, spread_proc)
+        if w.get("wejsc"):
+            losowe.append(w["sredni_zwrot_proc"])
+
+    placebo = round(statistics.mean(losowe), 4) if losowe else None
+    przewaga = (round(prawdziwy["sredni_zwrot_proc"] - placebo, 4)
+                if placebo is not None and prawdziwy.get("wejsc") else None)
+
+    return {
+        "warunek": f"{pole} {kierunek} {prog}",
+        "swiec": len(swiece),
+        "sprawdzane_po": f"{po_ilu} świecach",
+        "spread_odjety_proc": spread_proc,
+        "caly_okres": prawdziwy,
+        "pierwsza_polowa": _wynik_po(swiece, pierwsza, po_ilu, spread_proc),
+        "druga_polowa": _wynik_po(swiece, druga, po_ilu, spread_proc),
+        "placebo_sredni_zwrot": placebo,
+        "przewaga_nad_placebo": przewaga,
+        "wniosek": _wniosek(prawdziwy, placebo, przewaga,
+                            _wynik_po(swiece, pierwsza, po_ilu, spread_proc),
+                            _wynik_po(swiece, druga, po_ilu, spread_proc)),
+    }
+
+
+def _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga) -> str:
+    """Jedno zdanie o tym, co z pomiaru wynika. Bez upiększania."""
+    if not prawdziwy.get("wejsc"):
+        return "brak wejść — nie ma czego mierzyć"
+    if prawdziwy["wejsc"] < 20:
+        return (f"tylko {prawdziwy['wejsc']} wejść — za mało, żeby cokolwiek "
+                "twierdzić; potrzeba co najmniej dwudziestu")
+    if przewaga is None:
+        return "placebo nie policzone — wynik nieporównywalny"
+    if przewaga <= 0:
+        return (f"sygnał NIE bije losowego wejścia (różnica {przewaga}%) — "
+                "nie ma przewagi")
+    if prawdziwy["sredni_zwrot_proc"] <= 0:
+        # bicie placebo nie wystarcza: placebo bywa jeszcze gorsze, a stratny
+        # sygnał zostaje stratny niezależnie od tego, z czym go porównamy
+        return (f"sygnał bije placebo o {przewaga}%, ale sam traci "
+                f"{prawdziwy['sredni_zwrot_proc']}% po spreadzie — bez wartości")
+
+    a = pierwsza.get("sredni_zwrot_proc")
+    b = druga.get("sredni_zwrot_proc")
+    if a is None or b is None:
+        return f"przewaga {przewaga}%, ale jedna połowa okresu bez wejść — niepewne"
+    if (a > 0) != (b > 0):
+        return (f"przewaga {przewaga}%, ale połowy okresu przeczą sobie "
+                f"({a}% i {b}%) — wynik niestabilny")
+    return (f"przewaga {przewaga}% nad losowym wejściem, zgodna w obu połowach "
+            f"({a}% i {b}%) przy {prawdziwy['wejsc']} wejściach")
+
+
+def _rsi(ceny: list[float], okres: int = 14) -> list[float | None]:
+    """RSI liczony u nas, żeby dało się go policzyć dla każdej świecy wstecz."""
+    wynik: list[float | None] = [None] * len(ceny)
+    if len(ceny) < okres + 1:
+        return wynik
+
+    zyski, straty = [], []
+    for i in range(1, len(ceny)):
+        r = ceny[i] - ceny[i - 1]
+        zyski.append(max(r, 0))
+        straty.append(max(-r, 0))
+
+    sz = sum(zyski[:okres]) / okres
+    ss = sum(straty[:okres]) / okres
+    for i in range(okres, len(ceny)):
+        if i > okres:
+            sz = (sz * (okres - 1) + zyski[i - 1]) / okres
+            ss = (ss * (okres - 1) + straty[i - 1]) / okres
+        wynik[i] = 100.0 if ss == 0 else 100 - 100 / (1 + sz / ss)
+    return wynik
+
+
+def porownaj_progi(progi: list[float] | None = None, kierunek: str = "ponizej",
+                   po_ilu: int = 10, ile_swiec: int = 300,
+                   spread_proc: float = 0.02) -> dict:
+    """Ten sam pomiar na kilku progach naraz — który daje dość wejść i przewagę.
+
+    Luźniejszy próg daje więcej wejść, ale słabszy sygnał. Ostrzejszy odwrotnie.
+    To zestawienie pokazuje, gdzie leży granica, zamiast zgadywać.
+    """
+    progi = progi or [25, 30, 35, 40]
+    wiersze = []
+    for prog in progi:
+        try:
+            w = zmierz_prog("RSI", prog, kierunek, po_ilu, ile_swiec, spread_proc)
+            c = w.get("caly_okres", {})
+            a = w.get("pierwsza_polowa", {}).get("sredni_zwrot_proc")
+            b = w.get("druga_polowa", {}).get("sredni_zwrot_proc")
+            wiersze.append({
+                "prog": prog,
+                "wejsc": c.get("wejsc", 0),
+                "sredni_zwrot_proc": c.get("sredni_zwrot_proc"),
+                "trafien_proc": c.get("trafien_proc"),
+                "przewaga_nad_placebo": w.get("przewaga_nad_placebo"),
+                "polowy_zgodne": (a is not None and b is not None and (a > 0) == (b > 0)),
+                "dosc_wejsc": c.get("wejsc", 0) >= 20,
+            })
+        except Exception as e:
+            wiersze.append({"prog": prog, "blad": str(e)[:60]})
+
+    uzyteczne = [w for w in wiersze
+                 if w.get("dosc_wejsc") and w.get("polowy_zgodne")
+                 and (w.get("przewaga_nad_placebo") or 0) > 0
+                 # sam zwrot musi być dodatni — bicie placebo nie wystarcza,
+                 # bo placebo bywa jeszcze gorsze od stratnego sygnału
+                 and (w.get("sredni_zwrot_proc") or 0) > 0]
+
+    return {
+        "kierunek": kierunek,
+        "sprawdzane_po": f"{po_ilu} świecach",
+        "progi": wiersze,
+        "przechodzi_wszystkie_warunki": [w["prog"] for w in uzyteczne],
+        "wniosek": (
+            f"progi z dodatnim zwrotem, przewagą nad placebo, zgodnymi połowami "
+            f"i co najmniej 20 wejściami: {[w['prog'] for w in uzyteczne]}"
+            if uzyteczne else
+            "żaden próg nie przeszedł wszystkich czterech warunków"
+        ),
+    }
+
+
+def _demo():
+    print("Pomiar: czy RSI poniżej 30 cokolwiek zapowiada\n")
+    w = zmierz_prog("RSI", 30, "ponizej", po_ilu=10)
+    for k, v in w.items():
+        if isinstance(v, dict):
+            print(f"  {k}:")
+            for kk, vv in v.items():
+                print(f"      {kk:22} {vv}")
+        else:
+            print(f"  {k:24} {v}")
+
+
+if __name__ == "__main__":
+    _demo()
