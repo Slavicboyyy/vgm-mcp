@@ -48,7 +48,7 @@ def _n(nazwa, opis, wlasciwosci=None, wymagane=None):
 async def lista_narzedzi() -> list[Tool]:
     sym = {"symbol": dict(S, description="Nazwa z giełdą: FX:EURUSD, NASDAQ:NVDA, COINBASE:BTCUSD")}
     interw = {"interwal": dict(S, description="1, 5, 15, 60, 240, 1W. Pominięty = bieżący")}
-    rynek = {"rynek": dict(S, description="forex, crypto, america, poland…", default="forex")}
+    rynek = {"rynek": dict(S, description="forex, crypto, coin, america, poland, germany, uk, japan, futures, cfd", default="forex")}
     ile = {"ile": {"type": "integer", "default": 20}}
 
     return [
@@ -63,6 +63,11 @@ async def lista_narzedzi() -> list[Tool]:
            "PEŁNY obraz instrumentu: wszystkie 62 pola pogrupowane w dziewięć kategorii, "
            "jednym zapytaniem. Używaj, gdy chcesz zobaczyć całość naraz.",
            {**sym, **interw}, ["symbol"]),
+
+        _n("vgm_rynki",
+           "Spis rynków przyjmowanych przez przegląd, wszystkie sprawdzone: "
+           "forex, kryptowaluty, akcje amerykańskie, GPW, niemieckie, brytyjskie, "
+           "japońskie, kontrakty terminowe i na różnicę."),
 
         _n("vgm_pola",
            "Spis dostępnych pól z podziałem na grupy — sprawdź tu, zanim zgadniesz nazwę."),
@@ -249,6 +254,8 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
             return ok(dane.odczyt(a["symbol"], a.get("pola")))
         if nazwa == "vgm_obraz":
             return ok(analiza.obraz(a["symbol"], a.get("interwal")))
+        if nazwa == "vgm_rynki":
+            return ok(pola.RYNKI)
         if nazwa == "vgm_pola":
             return ok({g: lista for g, lista in pola.GRUPY.items()}
                       | {"interwaly_zmierzone": pola.INTERWALY_PEWNE})

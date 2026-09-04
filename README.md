@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Trzydzieści narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
+Trzydzieści jeden narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -154,6 +154,7 @@ W ustawieniach klienta MCP:
 Sprawdzenie bez klienta MCP:
 
 ```bash
+python3 test_vgm.py      # sprawdza wszystko: pola, rynki, Pine, wykres
 python3 src/dane.py      # warstwa danych
 python3 src/analiza.py   # warstwa analizy
 python3 src/pola.py      # sprawdza, czy wszystkie 91 pól nadal działają
@@ -185,6 +186,24 @@ analiza.zgodnosc_pelna("FX:EURUSD")
 analiza.skan_silny_trend("forex", prog_adx=30)
 # instrumenty z ADX ponad 30, z kierunkiem
 ```
+
+
+## Rynki
+
+Sprawdzone, wszystkie zwracają wyniki:
+
+| nazwa | co obejmuje |
+|---|---|
+| `forex` | pary walutowe |
+| `crypto`, `coin` | kryptowaluty, dwa różne zestawy |
+| `america` | akcje amerykańskie |
+| `poland` | GPW i NewConnect |
+| `germany`, `uk`, `japan` | akcje z tych giełd |
+| `futures` | kontrakty terminowe |
+| `cfd` | kontrakty na różnicę |
+
+Wszystkie 91 pól działa na każdym z tych rynków. Sprawdzone na kryptowalutach,
+akcjach amerykańskich, GPW i kontraktach na złoto: za każdym razem 91 z 91.
 
 ---
 

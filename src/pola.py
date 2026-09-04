@@ -86,6 +86,21 @@ ZESTAW = {
     "pelny": WSZYSTKIE,
 }
 
+# Rynki przyjmowane przez przegląd — sprawdzone 4 września 2026, wszystkie
+# zwróciły wyniki. Nazwa idzie wprost do adresu zapytania.
+RYNKI = {
+    "forex": "pary walutowe",
+    "crypto": "kryptowaluty",
+    "coin": "kryptowaluty, inny zestaw",
+    "america": "akcje amerykańskie",
+    "poland": "GPW i NewConnect",
+    "germany": "akcje niemieckie",
+    "uk": "akcje brytyjskie",
+    "japan": "akcje japońskie",
+    "futures": "kontrakty terminowe",
+    "cfd": "kontrakty na różnicę",
+}
+
 INTERWALY = ["1", "5", "15", "30", "60", "120", "240", "1W", "1M"]
 # zmierzone jako działające na FX:EURUSD (2026-09-04):
 INTERWALY_PEWNE = ["1", "5", "15", "60", "240", "1W"]
