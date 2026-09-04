@@ -225,6 +225,30 @@ async def lista_narzedzi() -> list[Tool]:
                               "ile_swiec": {"type": "integer", "default": 300},
                               "spread_proc": {"type": "number", "default": 0.02}}}),
 
+        Tool(name="vgm_zmierz",
+             description=("To samo co vgm_zmierz_prog, ale dla dowolnego z czterech "
+                          "wskaźników liczonych na świecach: RSI, Bollinger (położenie "
+                          "w kanale, 0 to dolna wstęga, 100 to górna), ADX (siła ruchu "
+                          "kierunkowego), ATR_proc (zasięg świecy jako procent ceny)."),
+             inputSchema={"type": "object",
+                          "properties": {
+                              "wskaznik": dict(S, description="RSI, Bollinger, ADX, ATR_proc",
+                                               default="RSI"),
+                              "prog": {"type": "number", "default": 30},
+                              "kierunek": dict(S, default="ponizej"),
+                              "po_ilu": {"type": "integer", "default": 10},
+                              "spread_proc": {"type": "number", "default": 0.02}}}),
+
+        Tool(name="vgm_przeglad_wskaznikow",
+             description=("Siedem warunków na czterech wskaźnikach, jeden przebieg. "
+                          "Odpowiada na pytanie, czy KTÓRYKOLWIEK cokolwiek zapowiada "
+                          "na tym instrumencie i przedziale. Zwraca też te, które nie "
+                          "przeszły, wraz z powodem."),
+             inputSchema={"type": "object",
+                          "properties": {
+                              "po_ilu": {"type": "integer", "default": 10},
+                              "spread_proc": {"type": "number", "default": 0.02}}}),
+
         Tool(name="vgm_porownaj_progi",
              description=("Ten sam pomiar na kilku progach naraz. Pokazuje, gdzie leży "
                           "granica między liczbą wejść a siłą sygnału, zamiast zgadywać. "
@@ -353,7 +377,8 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
 
         # ── wykres ──────────────────────────────────────────────────────
         if nazwa.startswith(("vgm_wykres", "vgm_wskaznik", "vgm_swiece",
-                             "vgm_zmierz", "vgm_porownaj_progi")):
+                             "vgm_zmierz", "vgm_porownaj_progi",
+                             "vgm_przeglad_wskaznikow")):
             import wykres  # dopiero tutaj — reszta działa bez websocket-client
 
             try:
@@ -383,6 +408,16 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                         "RSI", a.get("prog", 30), a.get("kierunek", "ponizej"),
                         a.get("po_ilu", 10), a.get("ile_swiec", 300),
                         a.get("spread_proc", 0.02)))
+                if nazwa == "vgm_zmierz":
+                    import pomiar
+                    return ok(pomiar.zmierz(
+                        a.get("wskaznik", "RSI"), a.get("prog", 30),
+                        a.get("kierunek", "ponizej"), a.get("po_ilu", 10),
+                        300, a.get("spread_proc", 0.02)))
+                if nazwa == "vgm_przeglad_wskaznikow":
+                    import pomiar
+                    return ok(pomiar.przeglad_wskaznikow(
+                        a.get("po_ilu", 10), 300, a.get("spread_proc", 0.02)))
                 if nazwa == "vgm_porownaj_progi":
                     import pomiar
                     return ok(pomiar.porownaj_progi(

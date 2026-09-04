@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Trzydzieści pięć narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
+Trzydzieści siedem narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -113,6 +113,43 @@ Sprawdzenie trwa około sekundy i wygląda tak:
 Kolumna po prawej mówi, na czym dane narzędzie zostało uruchomione. Puste pole
 znaczy, że sprawdziłem tylko, czy się wywołuje.
 
+---
+
+### Pomiar
+
+Ta grupa nie liczy sygnału. Sprawdza, czy sygnał jest cokolwiek wart.
+
+| narzędzie | do czego | sprawdzone na |
+|---|---|---|
+| `vgm_zmierz_prog` | czy przekroczenie progu cokolwiek zapowiada | RSI 30, 300 świec |
+| `vgm_porownaj_progi` | ten sam pomiar na kilku progach naraz | pięć progów RSI |
+| `vgm_zmierz` | to samo dla czterech wskaźników | RSI, Bollinger, ADX, ATR |
+| `vgm_przeglad_wskaznikow` | siedem warunków jednym przebiegiem | GBPUSD 1h, 300 świec |
+
+Cztery warunki, wszystkie muszą być spełnione naraz:
+
+**Dodatni zwrot po spreadzie.** Koszt wejścia wchodzi do rachunku.
+
+**Przewaga nad sygnałem losowym.** Ten sam pomiar na losowych wejściach
+o tej samej częstości. Placebo bywa gorsze od stratnego sygnału, więc samo
+pobicie go nie wystarcza.
+
+**Zgodność obu połów okresu.** Wynik z jednej połowy nic nie znaczy, dopóki
+nie powtórzy się w drugiej.
+
+**Co najmniej dwadzieścia wejść.** Trzy trafienia na trzy próby to przypadek.
+
+Przegląd siedmiu warunków na czterech wskaźnikach dał wynik odmowny w całości:
+
+```
+ADX poniżej 15:   +0,1687%   85,7% trafień   ale 7 wejść
+RSI poniżej 30:   +0,0416%   76,5% trafień   ale 17 wejść
+ADX powyżej 30:   -0,0260%   40,1% trafień   137 wejść, zwrot ujemny
+```
+
+Dwa pierwsze wyglądają świetnie i oba odpadają na liczbie wejść. Trzeci ma dość
+wejść, ale traci po spreadzie. Narzędzie mówi to wprost, zamiast wybierać
+najładniejszy wiersz.
 ---
 
 ## Dane, do których sięga

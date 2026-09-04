@@ -228,6 +228,203 @@ def porownaj_progi(progi: list[float] | None = None, kierunek: str = "ponizej",
     }
 
 
+# ── wskaźniki liczone u nas, żeby dało się je policzyć dla każdej świecy ──
+def _sma(ceny, okres):
+    w = [None] * len(ceny)
+    for i in range(okres - 1, len(ceny)):
+        w[i] = sum(ceny[i - okres + 1:i + 1]) / okres
+    return w
+
+
+def _atr(swiece, okres=14):
+    """Średni zasięg z uwzględnieniem luk między świecami."""
+    zasiegi = []
+    for i, s in enumerate(swiece):
+        if i == 0:
+            zasiegi.append(s["szczyt"] - s["dolek"])
+            continue
+        poprz = swiece[i - 1]["zamkniecie"]
+        zasiegi.append(max(s["szczyt"] - s["dolek"],
+                           abs(s["szczyt"] - poprz),
+                           abs(s["dolek"] - poprz)))
+    return _sma(zasiegi, okres)
+
+
+def _bollinger(ceny, okres=20, odchylen=2.0):
+    """Zwraca położenie ceny w kanale: 0 to dolna wstęga, 100 to górna."""
+    srodek = _sma(ceny, okres)
+    w = [None] * len(ceny)
+    for i in range(okres - 1, len(ceny)):
+        wycinek = ceny[i - okres + 1:i + 1]
+        sr = srodek[i]
+        odch = (sum((x - sr) ** 2 for x in wycinek) / okres) ** 0.5
+        gora, dol = sr + odchylen * odch, sr - odchylen * odch
+        w[i] = None if gora == dol else (ceny[i] - dol) / (gora - dol) * 100
+    return w
+
+
+def _adx(swiece, okres=14):
+    """Siła ruchu kierunkowego. Wysoka wartość to trend, niska to zakres."""
+    if len(swiece) < okres * 2:
+        return [None] * len(swiece)
+
+    plus, minus, tr = [], [], []
+    for i in range(1, len(swiece)):
+        gora = swiece[i]["szczyt"] - swiece[i - 1]["szczyt"]
+        dol = swiece[i - 1]["dolek"] - swiece[i]["dolek"]
+        plus.append(gora if gora > dol and gora > 0 else 0)
+        minus.append(dol if dol > gora and dol > 0 else 0)
+        poprz = swiece[i - 1]["zamkniecie"]
+        tr.append(max(swiece[i]["szczyt"] - swiece[i]["dolek"],
+                      abs(swiece[i]["szczyt"] - poprz),
+                      abs(swiece[i]["dolek"] - poprz)))
+
+    w = [None] * len(swiece)
+    dx = []
+    for i in range(okres, len(tr)):
+        str_ = sum(tr[i - okres:i])
+        if not str_:
+            dx.append(0)
+            continue
+        dp = sum(plus[i - okres:i]) / str_ * 100
+        dm = sum(minus[i - okres:i]) / str_ * 100
+        dx.append(0 if dp + dm == 0 else abs(dp - dm) / (dp + dm) * 100)
+
+    for i, wart in enumerate(dx):
+        poz = i + okres + 1
+        if poz < len(w) and i >= okres:
+            w[poz] = sum(dx[i - okres:i]) / okres
+    return w
+
+
+WSKAZNIKI = {
+    "RSI": "siła względna, 0 do 100",
+    "Bollinger": "położenie w kanale, 0 to dolna wstęga, 100 to górna",
+    "ADX": "siła ruchu kierunkowego",
+    "ATR_proc": "zasięg świecy jako procent ceny",
+}
+
+
+def _policz(nazwa: str, swiece: list) -> list:
+    zamkniecia = [s["zamkniecie"] for s in swiece]
+    if nazwa == "RSI":
+        return _rsi(zamkniecia, 14)
+    if nazwa == "Bollinger":
+        return _bollinger(zamkniecia, 20, 2.0)
+    if nazwa == "ADX":
+        return _adx(swiece, 14)
+    if nazwa == "ATR_proc":
+        atr = _atr(swiece, 14)
+        return [None if a is None or not c else a / c * 100
+                for a, c in zip(atr, zamkniecia)]
+    raise BladPomiaru(f"nieznany wskaźnik: {nazwa}. Dostępne: {list(WSKAZNIKI)}")
+
+
+def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
+           po_ilu: int = 10, ile_swiec: int = 300,
+           spread_proc: float = 0.02, losowan: int = 20) -> dict:
+    """To samo co zmierz_prog, ale dla dowolnego z czterech wskaźników.
+
+    Dostępne: RSI, Bollinger (położenie w kanale), ADX, ATR_proc.
+    """
+    import analiza
+
+    swiece = analiza._swiece_z_wykresu(ile_swiec)
+    if len(swiece) < 60:
+        raise BladPomiaru(f"za mało świec: {len(swiece)}, potrzeba co najmniej 60")
+
+    wartosci = _policz(wskaznik, swiece)
+    od = 25  # tyle świec potrzebuje najdłuższy wskaźnik na rozbieg
+
+    wejscia = []
+    for i in range(od, len(swiece) - po_ilu):
+        w = wartosci[i]
+        if w is None:
+            continue
+        if (kierunek == "ponizej" and w < prog) or (kierunek == "powyzej" and w > prog):
+            wejscia.append(i)
+
+    if not wejscia:
+        return {"wejsc": 0,
+                "uwaga": f"warunek {wskaznik} {kierunek} {prog} nie wystąpił ani razu"}
+
+    polowa = len(swiece) // 2
+    pierwsza = _wynik_po(swiece, [i for i in wejscia if i < polowa], po_ilu, spread_proc)
+    druga = _wynik_po(swiece, [i for i in wejscia if i >= polowa], po_ilu, spread_proc)
+    prawdziwy = _wynik_po(swiece, wejscia, po_ilu, spread_proc)
+
+    losowe = []
+    for _ in range(losowan):
+        prob = random.sample(range(od, len(swiece) - po_ilu),
+                             min(len(wejscia), len(swiece) - po_ilu - od - 1))
+        w = _wynik_po(swiece, prob, po_ilu, spread_proc)
+        if w.get("wejsc"):
+            losowe.append(w["sredni_zwrot_proc"])
+
+    placebo = round(statistics.mean(losowe), 4) if losowe else None
+    przewaga = (round(prawdziwy["sredni_zwrot_proc"] - placebo, 4)
+                if placebo is not None and prawdziwy.get("wejsc") else None)
+
+    return {
+        "warunek": f"{wskaznik} {kierunek} {prog}",
+        "opis_wskaznika": WSKAZNIKI.get(wskaznik, ""),
+        "swiec": len(swiece),
+        "sprawdzane_po": f"{po_ilu} świecach",
+        "spread_odjety_proc": spread_proc,
+        "caly_okres": prawdziwy,
+        "pierwsza_polowa": pierwsza,
+        "druga_polowa": druga,
+        "placebo_sredni_zwrot": placebo,
+        "przewaga_nad_placebo": przewaga,
+        "wniosek": _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga),
+    }
+
+
+def przeglad_wskaznikow(po_ilu: int = 10, ile_swiec: int = 300,
+                        spread_proc: float = 0.02) -> dict:
+    """Wszystkie cztery wskaźniki, sensowne progi, jeden przebieg.
+
+    Odpowiada na pytanie: czy KTÓRYKOLWIEK z nich cokolwiek zapowiada
+    na tym instrumencie i przedziale.
+    """
+    zestaw = [
+        ("RSI", 30, "ponizej"), ("RSI", 70, "powyzej"),
+        ("Bollinger", 10, "ponizej"), ("Bollinger", 90, "powyzej"),
+        ("ADX", 30, "powyzej"), ("ADX", 15, "ponizej"),
+        ("ATR_proc", 0.15, "powyzej"),
+    ]
+
+    wiersze = []
+    for wsk, prog, kier in zestaw:
+        try:
+            w = zmierz(wsk, prog, kier, po_ilu, ile_swiec, spread_proc)
+            c = w.get("caly_okres", {})
+            wiersze.append({
+                "warunek": f"{wsk} {kier} {prog}",
+                "wejsc": c.get("wejsc", 0),
+                "zwrot_proc": c.get("sredni_zwrot_proc"),
+                "trafien_proc": c.get("trafien_proc"),
+                "przewaga": w.get("przewaga_nad_placebo"),
+                "wniosek": w.get("wniosek", "")[:70],
+            })
+        except Exception as e:
+            wiersze.append({"warunek": f"{wsk} {kier} {prog}", "blad": str(e)[:60]})
+
+    przeszly = [w for w in wiersze
+                if w.get("wejsc", 0) >= 20
+                and (w.get("zwrot_proc") or 0) > 0
+                and (w.get("przewaga") or 0) > 0]
+
+    return {
+        "sprawdzono": len(wiersze),
+        "wyniki": wiersze,
+        "przeszly": [w["warunek"] for w in przeszly],
+        "wniosek": (f"warunki z przewagą: {[w['warunek'] for w in przeszly]}"
+                    if przeszly else
+                    "żaden z siedmiu warunków nie dał przewagi na tych danych"),
+    }
+
+
 def _demo():
     print("Pomiar: czy RSI poniżej 30 cokolwiek zapowiada\n")
     w = zmierz_prog("RSI", 30, "ponizej", po_ilu=10)
