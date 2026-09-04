@@ -134,6 +134,74 @@ async def lista_narzedzi() -> list[Tool]:
            {**rynek,
             "warunki": {"type": "array", "items": {"type": "object"}},
             "pola": L, **ile}, ["rynek", "warunki"]),
+
+        # ── wykres: wymaga otwartej przeglądarki ────────────────────────
+        Tool(name="vgm_wykres_zdrowie",
+             description=("Czy da się sterować wykresem: czy przeglądarka odpowiada, "
+                          "czy jest karta z TradingView, czy strona udostępnia API. "
+                          "SPRAWDŹ TO PRZED każdym innym narzędziem wykresu. "
+                          "Port bierze ze zmiennej VGM_CDP_PORT."),
+             inputSchema={"type": "object", "properties": {}}),
+
+        Tool(name="vgm_wykres_stan",
+             description=("Co jest teraz na wykresie: instrument, przedział czasu, typ, "
+                          "lista wskaźników i rysunków. Wymaga otwartej przeglądarki."),
+             inputSchema={"type": "object", "properties": {}}),
+
+        Tool(name="vgm_wykres_wartosci",
+             description=("Bieżące wartości WSZYSTKICH wskaźników z wykresu — także "
+                          "własnych, napisanych w Pine, których publiczne API nie zna. "
+                          "To główny powód, dla którego warstwa przeglądarki istnieje."),
+             inputSchema={"type": "object", "properties": {}}),
+
+        Tool(name="vgm_wykres_symbol",
+             description="Zmienia instrument na wykresie, np. FX:EURUSD, NASDAQ:NVDA.",
+             inputSchema={"type": "object",
+                          "properties": {"symbol": S}, "required": ["symbol"]}),
+
+        Tool(name="vgm_wykres_interwal",
+             description="Zmienia przedział czasu wykresu: 1, 5, 15, 60, 240, D, W, M.",
+             inputSchema={"type": "object",
+                          "properties": {"interwal": S}, "required": ["interwal"]}),
+
+        Tool(name="vgm_wykres_typ",
+             description="Typ wykresu: 0 słupki, 1 świece, 3 linia, 9 Heikin Ashi.",
+             inputSchema={"type": "object",
+                          "properties": {"typ": {"type": "integer"}}, "required": ["typ"]}),
+
+        Tool(name="vgm_wskaznik_dodaj",
+             description=("Dodaje wskaźnik na wykres po pełnej nazwie, dokładnie takiej "
+                          'jak w oknie wyboru TradingView: "Relative Strength Index", '
+                          '"Moving Average Exponential", "Volume".'),
+             inputSchema={"type": "object",
+                          "properties": {"nazwa": S}, "required": ["nazwa"]}),
+
+        Tool(name="vgm_wskaznik_usun",
+             description="Usuwa wskaźnik z wykresu po identyfikatorze z vgm_wykres_stan.",
+             inputSchema={"type": "object",
+                          "properties": {"id": S}, "required": ["id"]}),
+
+        # ── Pine Script: bez przeglądarki ───────────────────────────────
+        Tool(name="vgm_pine_sprawdz",
+             description=("Kompiluje kod Pine w kompilatorze TradingView i zwraca błędy "
+                          "z dokładną linią i kolumną, plus podgląd wskazujący miejsce. "
+                          "Bez przeglądarki i bez konta, odpowiedź w około sekundę. "
+                          "WYWOŁUJ TO ZAWSZE przed wstawieniem skryptu na wykres."),
+             inputSchema={"type": "object",
+                          "properties": {"kod": dict(S, description="Kod Pine Script")},
+                          "required": ["kod"]}),
+
+        Tool(name="vgm_pine_sprawdz_plik",
+             description="To samo co vgm_pine_sprawdz, ale czyta kod z pliku na dysku.",
+             inputSchema={"type": "object",
+                          "properties": {"sciezka": S}, "required": ["sciezka"]}),
+
+        Tool(name="vgm_pine_szkielet",
+             description=("Zwraca gotowy szkielet wskaźnika Pine w wersji 5, sprawdzony "
+                          "w kompilatorze. Punkt wyjścia do pisania własnego."),
+             inputSchema={"type": "object",
+                          "properties": {"nazwa": S,
+                                         "na_wykresie": {"type": "boolean", "default": True}}}),
     ]
 
 
@@ -181,6 +249,46 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
         if nazwa == "vgm_skan":
             return ok(analiza.skan_wlasny(a["rynek"], a["warunki"],
                                           a.get("pola"), a.get("ile", 30)))
+        # ── Pine ────────────────────────────────────────────────────────
+        if nazwa.startswith("vgm_pine"):
+            import pine
+
+            try:
+                if nazwa == "vgm_pine_sprawdz":
+                    return ok(pine.sprawdz(a["kod"]))
+                if nazwa == "vgm_pine_sprawdz_plik":
+                    return ok(pine.sprawdz_plik(a["sciezka"]))
+                if nazwa == "vgm_pine_szkielet":
+                    return ok({"kod": pine.szkielet(a.get("nazwa", "Nowy wskaźnik"),
+                                                    a.get("na_wykresie", True))})
+            except pine.BladPine as e:
+                return ok({"blad": str(e), "narzedzie": nazwa})
+
+        # ── wykres ──────────────────────────────────────────────────────
+        if nazwa.startswith(("vgm_wykres", "vgm_wskaznik")):
+            import wykres  # dopiero tutaj — reszta działa bez websocket-client
+
+            try:
+                if nazwa == "vgm_wykres_zdrowie":
+                    return ok(wykres.zdrowie())
+                if nazwa == "vgm_wykres_stan":
+                    return ok(wykres.stan())
+                if nazwa == "vgm_wykres_wartosci":
+                    return ok(wykres.wartosci())
+                if nazwa == "vgm_wykres_symbol":
+                    return ok(wykres.ustaw_symbol(a["symbol"]))
+                if nazwa == "vgm_wykres_interwal":
+                    return ok(wykres.ustaw_interwal(a["interwal"]))
+                if nazwa == "vgm_wykres_typ":
+                    return ok(wykres.ustaw_typ(a["typ"]))
+                if nazwa == "vgm_wskaznik_dodaj":
+                    return ok(wykres.dodaj_wskaznik(a["nazwa"]))
+                if nazwa == "vgm_wskaznik_usun":
+                    return ok(wykres.usun_wskaznik(a["id"]))
+            except wykres.BladWykresu as e:
+                return ok({"blad": str(e), "narzedzie": nazwa,
+                           "podpowiedz": "sprawdź vgm_wykres_zdrowie"})
+
         return ok({"blad": f"nieznane narzędzie: {nazwa}"})
 
     except dane.BladTV as e:

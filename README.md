@@ -2,8 +2,11 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Piętnaście narzędzi. Sześćdziesiąt dwa pola danych. Sześć przedziałów czasowych naraz,
-jednym zapytaniem.
+Dwadzieścia sześć narzędzi. Sześćdziesiąt dwa pola danych. Sześć przedziałów czasowych
+naraz, jednym zapytaniem.
+
+Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
+z wykresem.
 
 ---
 
@@ -57,6 +60,41 @@ VGM bierze wszystkie i nie potrzebuje do tego okna.
 | `vgm_skan_trend` | ADX powyżej progu, z kierunkiem |
 | `vgm_skan_wolumen` | wolumen ponad wielokrotność średniej z dziesięciu dni |
 | `vgm_skan` | dowolny filtr TradingView |
+
+### Wykres
+
+Ta grupa wymaga otwartej karty z TradingView. Port podajesz w `VGM_CDP_PORT`.
+
+| narzędzie | do czego |
+|---|---|
+| `vgm_wykres_zdrowie` | czy da się sterować, sprawdź przed resztą |
+| `vgm_wykres_stan` | instrument, przedział, typ, wskaźniki, rysunki |
+| `vgm_wykres_wartosci` | bieżące wartości wszystkich wskaźników z wykresu |
+| `vgm_wykres_symbol` | zmiana instrumentu |
+| `vgm_wykres_interwal` | zmiana przedziału czasu |
+| `vgm_wykres_typ` | świece, słupki, linia, Heikin Ashi |
+| `vgm_wskaznik_dodaj` | dodanie wskaźnika po nazwie |
+| `vgm_wskaznik_usun` | usunięcie po identyfikatorze |
+
+`vgm_wykres_wartosci` czyta również wskaźniki własne, napisane w Pine. Publiczne
+dane ich nie znają, bo istnieją tylko na Twoim wykresie.
+
+### Pine Script
+
+Bez przeglądarki i bez konta.
+
+| narzędzie | do czego |
+|---|---|
+| `vgm_pine_sprawdz` | kompilacja z dokładną linią i kolumną błędu |
+| `vgm_pine_sprawdz_plik` | to samo, z pliku na dysku |
+| `vgm_pine_szkielet` | gotowy punkt wyjścia, sam się kompiluje |
+
+Sprawdzenie trwa około sekundy i wygląda tak:
+
+```
+   3 | plot(ta.sma(clse, 20))
+     |             ^-- Undeclared identifier 'clse'
+```
 
 ---
 
@@ -142,11 +180,11 @@ Lista jawna. Lepiej wiedzieć z góry, niż odkryć w trakcie.
 
 | brakuje | powód |
 |---|---|
-| sterowanie wykresem | potrzebna przeglądarka, następny krok |
-| Pine Script | potrzebna przeglądarka i konto |
-| Strategy Tester | potrzebna przeglądarka, a wyniki i tak tylko poglądowe |
+| wstawianie Pine na wykres | sprawdzanie kodu działa, wstawianie jeszcze nie |
+| Strategy Tester | wyniki i tak są tylko poglądowe, więc niski priorytet |
 | świece historyczne | inne źródło, jeszcze niesprawdzone |
-| zrzuty wykresu | potrzebna przeglądarka |
+| alerty | do zrobienia |
+| rysowanie na wykresie | do zrobienia |
 
 Te rzeczy są zaplanowane, ale żadnej nie ma w kodzie. Nie chcę, żeby ktoś liczył
 na coś, czego nie zbudowałem.
@@ -166,8 +204,8 @@ tyle poniżej. Próg jest w parametrze, bo należy do strategii. Wpisanie go na 
 sugerowałoby przewagę, której nikt nie zmierzył. To najdroższy rodzaj kłamstwa w handlu.
 
 **Odstęp między zapytaniami: 1,2 sekundy.** Wymuszony w kodzie. Przy odpowiedzi 403
-albo 429 serwer staje i nie ponawia. Ponawianie przy tych kodach kończy się blokadą adresu.
-Sprawdzone drogą doświadczenia.
+albo 429 serwer staje i nie ponawia. Ponawianie przy tych kodach kończy się blokadą adresu, o czym przekonaliśmy się
+na własnej skórze.
 
 ---
 
