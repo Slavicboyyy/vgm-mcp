@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Trzydzieści narzędzi. Sześćdziesiąt dwa pola danych. Sześć przedziałów czasowych
+Trzydzieści narzędzi plus polecenie w terminalu. Sześćdziesiąt dwa pola danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -185,6 +185,28 @@ analiza.zgodnosc_pelna("FX:EURUSD")
 analiza.skan_silny_trend("forex", prog_adx=30)
 # instrumenty z ADX ponad 30, z kierunkiem
 ```
+
+---
+
+## Z terminala
+
+Te same narzędzia bez klienta MCP:
+
+```bash
+vgm odczyt FX:EURUSD              cena i wskaźniki
+vgm obraz FX:EURUSD               wszystkie 62 pola
+vgm polozenie FX:EURUSD           miejsce ceny względem odniesień
+vgm mtf FX:EURUSD                 wskaźnik na kilku przedziałach
+vgm zgodnosc FX:EURUSD            ile przedziałów mówi to samo
+vgm porownaj FX:EURUSD FX:GBPUSD  instrumenty obok siebie
+vgm skan trend                    przegląd rynku
+vgm pine moj-wskaznik.pine        sprawdzenie kodu
+vgm wykres stan                   co jest na wykresie
+vgm wykres zrzut obraz.png        zapis wykresu
+vgm swiece 200 --statystyka       liczby ze świec
+```
+
+Każde polecenie przyjmuje `--json`, gdy wynik ma iść dalej do skryptu.
 
 ---
 
