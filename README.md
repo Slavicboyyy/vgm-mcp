@@ -28,18 +28,18 @@ VGM bierze wszystkie i nie potrzebuje do tego okna.
 
 ### Odczyt
 
-| narzędzie | do czego |
-|---|---|
-| `vgm_odczyt` | wybrane pola dla instrumentu |
-| `vgm_obraz` | wszystkie 62 pola naraz, w dziewięciu grupach |
-| `vgm_pola` | spis dostępnych pól, do sprawdzenia przed zgadywaniem nazwy |
+| narzędzie | do czego | sprawdzone na |
+|---|---|---|
+| `vgm_odczyt` | wybrane pola dla instrumentu | FX:EURUSD, 62 pola |
+| `vgm_obraz` | wszystkie 62 pola naraz, w dziewięciu grupach | FX:EURUSD |
+| `vgm_pola` | spis dostępnych pól, do sprawdzenia przed zgadywaniem nazwy | — |
 
 ### Położenie ceny
 
-| narzędzie | do czego |
-|---|---|
-| `vgm_polozenie` | gdzie stoi cena w kanale Bollingera, w rozpiętości rocznej, względem średnich |
-| `vgm_srednie` | układ sześciu średnich wykładniczych od 5 do 200 |
+| narzędzie | do czego | sprawdzone na |
+|---|---|---|
+| `vgm_polozenie` | miejsce ceny w kanale Bollingera, w rozpiętości rocznej, względem średnich | FX:EURUSD |
+| `vgm_srednie` | układ sześciu średnich wykładniczych od 5 do 200 | FX:EURUSD |
 
 ### Wiele przedziałów czasu
 
@@ -65,18 +65,18 @@ VGM bierze wszystkie i nie potrzebuje do tego okna.
 
 Ta grupa wymaga otwartej karty z TradingView. Port podajesz w `VGM_CDP_PORT`.
 
-| narzędzie | do czego |
-|---|---|
-| `vgm_wykres_zdrowie` | czy da się sterować, sprawdź przed resztą |
-| `vgm_wykres_stan` | instrument, przedział, typ, wskaźniki, rysunki |
-| `vgm_wykres_wartosci` | bieżące wartości wszystkich wskaźników z wykresu |
-| `vgm_wykres_symbol` | zmiana instrumentu |
-| `vgm_wykres_interwal` | zmiana przedziału czasu |
-| `vgm_wykres_typ` | świece, słupki, linia, Heikin Ashi |
-| `vgm_wskaznik_dodaj` | dodanie wskaźnika po nazwie |
-| `vgm_wskaznik_usun` | usunięcie po identyfikatorze |
-| `vgm_wykres_swiece` | świece historyczne z pełnym OHLCV |
-| `vgm_wykres_zrzut` | obraz wykresu do pliku PNG |
+| narzędzie | do czego | sprawdzone na |
+|---|---|---|
+| `vgm_wykres_zdrowie` | czy da się sterować, sprawdź przed resztą | karta z wykresem |
+| `vgm_wykres_stan` | instrument, przedział, typ, wskaźniki, rysunki | BATS:AAPL, FX:GBPUSD |
+| `vgm_wykres_wartosci` | bieżące wartości wskaźników z wykresu | RSI 53,16 i Volume |
+| `vgm_wykres_symbol` | zmiana instrumentu | AAPL na EURUSD, potwierdzone odczytem |
+| `vgm_wykres_interwal` | zmiana przedziału czasu | D na 60, potwierdzone odczytem |
+| `vgm_wykres_typ` | świece, słupki, linia, Heikin Ashi | wywołanie przechodzi |
+| `vgm_wskaznik_dodaj` | dodanie wskaźnika po nazwie | RSI dodany i widoczny |
+| `vgm_wskaznik_usun` | usunięcie po identyfikatorze | RSI usunięty |
+| `vgm_wykres_swiece` | świece historyczne z pełnym OHLCV | 300 świec GBPUSD 1h |
+| `vgm_wykres_zrzut` | obraz wykresu do pliku PNG | 84 KB, wykres widoczny |
 
 `vgm_wykres_wartosci` czyta również wskaźniki własne, napisane w Pine. Publiczne
 dane ich nie znają, bo istnieją tylko na Twoim wykresie.
@@ -92,11 +92,11 @@ obejrzeć, a nie tylko odczytać z niego liczby.
 
 Bez przeglądarki i bez konta.
 
-| narzędzie | do czego |
-|---|---|
-| `vgm_pine_sprawdz` | kompilacja z dokładną linią i kolumną błędu |
-| `vgm_pine_sprawdz_plik` | to samo, z pliku na dysku |
-| `vgm_pine_szkielet` | gotowy punkt wyjścia, sam się kompiluje |
+| narzędzie | do czego | sprawdzone na |
+|---|---|---|
+| `vgm_pine_sprawdz` | kompilacja z dokładną linią i kolumną błędu | kod poprawny, jeden błąd, dwa błędy |
+| `vgm_pine_sprawdz_plik` | to samo, z pliku na dysku | — |
+| `vgm_pine_szkielet` | gotowy punkt wyjścia, sam się kompiluje | kompiluje się bez błędu |
 
 Sprawdzenie trwa około sekundy i wygląda tak:
 
@@ -104,6 +104,9 @@ Sprawdzenie trwa około sekundy i wygląda tak:
    3 | plot(ta.sma(clse, 20))
      |             ^-- Undeclared identifier 'clse'
 ```
+
+Kolumna po prawej mówi, na czym dane narzędzie zostało uruchomione. Puste pole
+znaczy, że sprawdziłem tylko, czy się wywołuje.
 
 ---
 
@@ -191,7 +194,7 @@ Lista jawna. Lepiej wiedzieć z góry, niż odkryć w trakcie.
 |---|---|
 | wstawianie Pine na wykres | wymaga zalogowanego edytora |
 | alerty | wymagają konta |
-| rysowanie na wykresie | do zrobienia |
+| rysowanie na wykresie | sprawdzone: wywołanie przechodzi, ale nic się nie pojawia bez sesji |
 | Strategy Tester | wyniki są i tak tylko poglądowe, więc niski priorytet |
 
 Warstwa wykresu działa bez logowania w zakresie odczytu i sterowania. Zapisywanie
