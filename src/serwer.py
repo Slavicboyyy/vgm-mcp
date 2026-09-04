@@ -207,7 +207,12 @@ async def lista_narzedzi() -> list[Tool]:
         Tool(name="vgm_wskaznik_dodaj",
              description=("Dodaje wskaźnik na wykres po pełnej nazwie, dokładnie takiej "
                           'jak w oknie wyboru TradingView: "Relative Strength Index", '
-                          '"Moving Average Exponential", "Volume".'),
+                          '"Moving Average Exponential", "Volume". '
+                          "UWAGA, zmierzone: bez zalogowania TradingView liczy tylko JEDEN "
+                          "wskaźnik naraz. Kolejne pojawiają się na liście, ale ich wartości "
+                          "zostają puste. Usuń poprzedni przez vgm_wskaznik_usun albo zaloguj "
+                          "się. Narzędzie czeka na dane i w odpowiedzi mówi, czy wskaźnik "
+                          "faktycznie liczy."),
              inputSchema={"type": "object",
                           "properties": {"nazwa": S}, "required": ["nazwa"]}),
 

@@ -91,6 +91,16 @@ i wolumenem. Żadne osobne źródło danych nie jest potrzebne.
 `vgm_wykres_zrzut` zapisuje obraz wykresu do pliku. Model może dzięki temu wykres
 obejrzeć, a nie tylko odczytać z niego liczby.
 
+
+🔴 **Bez zalogowania TradingView liczy tylko jeden wskaźnik naraz.** Zmierzone:
+po wyczyszczeniu wykresu pierwszy dodany zaczyna zwracać wartości, drugi i trzeci
+pojawiają się na liście, ale ich serie zostają puste. `vgm_wskaznik_dodaj`
+czeka na dane i w odpowiedzi mówi, czy wskaźnik faktycznie liczy.
+
+Chcesz kilku naraz, zaloguj się. Chcesz jednego, usuń poprzedni przez
+`vgm_wskaznik_usun`.
+---
+
 ### Pine Script
 
 Bez przeglądarki i bez konta.

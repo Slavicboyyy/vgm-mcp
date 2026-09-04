@@ -349,11 +349,23 @@ def wartosci() -> list:
     """)))
 
 
-def dodaj_wskaznik(nazwa: str) -> dict:
+def dodaj_wskaznik(nazwa: str, czekaj_na_dane: bool = True,
+                   sekund: float = 12) -> dict:
     """Dodaje wskaźnik na wykres po pełnej nazwie.
 
     Nazwa musi być dokładna, tak jak w oknie wyboru wskaźników TradingView,
     np. "Relative Strength Index", "Moving Average Exponential", "Volume".
+
+    🔴 Zmierzone ograniczenie: BEZ ZALOGOWANIA TradingView liczy tylko JEDEN
+    wskaźnik naraz. Kolejne pojawiają się na liście, ale ich serie zostają puste
+    i `wartosci()` ich nie widzi. Sprawdzone po wyczyszczeniu wykresu: pierwszy
+    dodany zaczyna liczyć, drugi i trzeci już nie.
+
+    Chcesz kilku wskaźników naraz — zaloguj się na TradingView w tej przeglądarce.
+    Chcesz jednego — usuń poprzedni przez `usun_wskaznik`, zanim dodasz następny.
+
+    Dlatego domyślnie czekamy, aż wskaźnik zacznie zwracać liczby, i mówimy wprost,
+    gdy się nie doczekał.
     """
     n = json.dumps(nazwa)
     w = _sprawdz(_wykonaj(_na_wykresie(f"""
@@ -362,8 +374,31 @@ def dodaj_wskaznik(nazwa: str) -> dict:
         cel.createStudy({n}, false, false, []);
         return {{ok: true, dodano: {n}}};
     """)))
-    time.sleep(2)  # wskaźnik wchodzi na wykres z opóźnieniem
-    return w
+    time.sleep(2)
+
+    if not czekaj_na_dane:
+        return w
+
+    koniec = time.time() + sekund
+    while time.time() < koniec:
+        try:
+            if any(nazwa.lower() in x["nazwa"].lower() for x in wartosci()):
+                return {**w, "liczy": True}
+        except BladWykresu:
+            pass
+        time.sleep(2)
+
+    ile_liczy = 0
+    try:
+        ile_liczy = len([x for x in wartosci() if "Volume" not in x["nazwa"]])
+    except BladWykresu:
+        pass
+
+    return {**w, "liczy": False, "wskaznikow_liczacych": ile_liczy,
+            "uwaga": ("wskaźnik jest na wykresie, ale nie zwraca wartości. "
+                      "Bez zalogowania TradingView liczy tylko JEDEN wskaźnik naraz — "
+                      "usuń poprzedni przez vgm_wskaznik_usun albo zaloguj się. "
+                      "Druga możliwa przyczyna: dodany, zanim wykres wczytał świece.")}
 
 
 def usun_wskaznik(identyfikator: str) -> dict:
