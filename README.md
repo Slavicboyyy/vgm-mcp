@@ -167,13 +167,28 @@ dzienny   54 wejścia  +2,0130%   59,3% trafień   przewaga 1,0435%   przeszedł
 Na EURUSD i bitcoinie ten sam warunek nie przeszedł.
 ```
 
-To jeden pomiar na trzystu świecach, więc nie dowodzi przewagi.
-Za to pierwszy warunek, który przeszedł wszystkie cztery bariery,
-przeszedł wszystkie cztery bariery i jest pierwszym kandydatem wartym
-sprawdzenia na dłuższej historii.
+Ten sam warunek na czterech surowcach, przedział dzienny:
 
-Przed naprawą ten sam przebieg pokazywał identyczne liczby dla wszystkich
-instrumentów, bo cztery razy liczył te same świece.
+```
+złoto    54 wejścia  +2,0113%   59,3% trafień   przewaga +0,618    przeszedł
+srebro   67 wejść    +1,9925%   67,2% trafień   przewaga -1,1417   odpadł
+miedź    56 wejść    +0,4569%   58,9% trafień   przewaga -1,2906   odpadł
+ropa     34 wejścia  +3,1606%   55,9% trafień   przewaga +1,2515   przeszedł
+```
+
+Srebro warto obejrzeć uważnie. Ma najwyższy odsetek trafień w całym zestawieniu,
+67,2 procent, i prawie dwa procent zwrotu. A mimo to odpada, bo w badanym okresie
+rosło tak mocno, że losowe wejście dawało jeszcze więcej. Sygnał nie dodawał nic
+ponad samo bycie na rynku.
+
+Bez porównania z losowym wejściem srebro wyglądałoby na najlepszy wiersz tabeli.
+Tak właśnie powstają strategie, które świetnie wyglądają w hossie.
+
+Podsumowując: dwa surowce z czterech, trzy przedziały z czterech. Warunek nie jest
+uniwersalny i nie ma tu dowodu na przewagę, bo trzysta świec to mało, nie było
+sprawdzenia poza próbą, a poślizg nie wchodzi do rachunku. Jest to natomiast
+pierwszy kandydat, który przetrwał wszystkie cztery bariery na kilku instrumentach
+i przedziałach naraz.
 ---
 
 ## Dane, do których sięga

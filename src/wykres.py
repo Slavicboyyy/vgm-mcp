@@ -51,7 +51,35 @@ def _karta():
         "żadna karta nie ma otwartego TradingView — otwórz wykres i spróbuj ponownie")
 
 
-def _wykonaj(kod: str, czekaj: float = 25):
+def _wykonaj(kod: str, czekaj: float = 25, prob: int = 2):
+    """Wykonuje kod na karcie. Przy przeciążonej przeglądarce ponawia raz.
+
+    Zmierzone: gdy przeglądarka ma kilkadziesiąt kart, pojedyncze wywołanie
+    potrafi przekroczyć czas mimo działającej strony. Jedno ponowienie
+    z dłuższym limitem wystarcza.
+    """
+    ostatni = None
+    for i in range(prob):
+        try:
+            return _wykonaj_raz(kod, czekaj * (1 + i))
+        except (BladWykresu, OSError) as e:
+            ostatni = e
+            if "przekroczy" in str(e).lower() or "timed out" in str(e).lower():
+                time.sleep(2)
+                continue
+            raise
+        except Exception as e:
+            # timeout gniazda przychodzi jako wyjątek biblioteki, nie nasz
+            ostatni = e
+            if "timed out" in str(e).lower():
+                time.sleep(2)
+                continue
+            raise BladWykresu(f"{type(e).__name__}: {str(e)[:70]}") from e
+    raise BladWykresu(
+        f"przeglądarka nie odpowiedziała po {prob} próbach: {str(ostatni)[:60]}")
+
+
+def _wykonaj_raz(kod: str, czekaj: float = 25):
     k = _karta()
     _licznik[0] += 1
     nr = _licznik[0]
