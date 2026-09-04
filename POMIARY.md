@@ -136,3 +136,50 @@ Pomiar średniego zwrotu po sygnale zostaje poprawny i przydatny. Zmienia się
 tylko to, jak go czytać: mówi o zachowaniu rynku po warunku, nie o zysku
 z handlu.
 ---
+
+---
+
+## Koniec badania: sygnał nie działa
+
+Ostatni pomiar zamyka sprawę. Transakcje bez nakładania, jedna pozycja naraz,
+koszt 0,05 procent, przedział dzienny:
+
+```
+ZŁOTO   świec   transakcji    sygnał   trzymanie
+            3           24     6,05%      30,33%
+            5           17    17,83%      30,33%
+           10           12    25,53%      30,33%
+           20            8    26,25%      30,33%
+
+ROPA        3           17    21,65%      37,41%
+            5           12    17,23%      37,41%
+           10            8     6,56%      37,41%
+           20            5    43,86%      37,41%   (za mało transakcji)
+```
+
+Przy trzech świecach na złocie mamy dwadzieścia cztery transakcje, czyli powyżej
+progu, który sam sobie postawiłem. Sygnał daje tam sześć procent, a zwykłe
+kupno z trzymaniem trzydzieści. Próbka wystarczająca, wynik jednoznaczny.
+
+Jedyny wiersz, w którym sygnał wygrywa, to ropa przy dwudziestu świecach —
+pięć transakcji. Za mało, żeby cokolwiek z tego wnioskować.
+
+## Czego nauczyło to narzędzie
+
+Badanie skończyło się odmownie, ale po drodze warstwa pomiaru wykryła trzy
+błędy w moich własnych obliczeniach. Każdy z nich wyglądał na sukces:
+
+**Świece z innego instrumentu.** Wykres pokazywał BTCUSD i zwracał ceny funta.
+Objaw: cztery różne instrumenty dały identyczne liczby.
+
+**Przedział czasu, który kłamie.** Wykres pokazywał dniówkę, a odstęp między
+świecami wynosił godzinę. Objaw: cztery różne przedziały dały identyczne liczby.
+
+**Nakładające się pozycje.** Czterdzieści siedem wejść w miejscu czterech
+prawdziwych transakcji. Objaw: suma 322 procent przy trzydziestu z trzymania.
+
+Za każdym razem objawem była liczba zbyt dobra, żeby była prawdziwa. Bez tych
+sprawdzeń mielibyśmy dziś „działającą strategię na złocie" opartą na czterech
+transakcjach i pomyłce w liczeniu.
+
+Sygnał odpadł. Narzędzie, które go odsiało, zostaje.

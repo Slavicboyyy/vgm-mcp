@@ -153,6 +153,15 @@ Dwa pierwsze wyglądają świetnie i oba odpadają na liczbie wejść. Trzeci ma
 wejść, ale traci po spreadzie. Narzędzie mówi to wprost, zamiast wybierać
 najładniejszy wiersz.
 
+Warstwa pomiaru powstała po to, żeby odsiewać sygnały, które tylko wyglądają
+dobrze. Pierwszy badany warunek odpadł: na złocie dawał sześć procent tam, gdzie
+zwykłe kupno z trzymaniem dawało trzydzieści.
+
+Po drodze te same narzędzia wykryły trzy błędy w moich własnych obliczeniach,
+każdy wyglądający na sukces. Pełny przebieg badania: [POMIARY.md](POMIARY.md).
+
+---
+
 ## Pola danych
 
 Sześćdziesiąt dwa pola, wszystkie sprawdzone na żywym rynku:
