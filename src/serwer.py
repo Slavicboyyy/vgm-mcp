@@ -454,10 +454,15 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                 return ok({"blad": str(e), "narzedzie": nazwa})
 
         # ── wykres ──────────────────────────────────────────────────────
+        # Lista musi obejmować KAŻDE narzędzie tej grupy — narzędzie spoza niej
+        # jest zadeklarowane, ale nieobsługiwane, i zwraca "nieznane narzędzie".
+        # Pilnuje tego .narzedzia/sprawdz_wszystkie.py, który woła wszystkie po kolei.
         if nazwa.startswith(("vgm_wykres", "vgm_wskaznik", "vgm_swiece",
                              "vgm_zmierz", "vgm_porownaj_progi",
-                             "vgm_przeglad_wskaznikow", "vgm_sygnal_czy_trend",
-                             "vgm_odniesienie_trzymanie", "vgm_jak_dlugo_trzymac", "vgm_koszt_a_przewaga")):
+                             "vgm_przeglad_",          # wskaznikow ORAZ instrumentow
+                             "vgm_sygnal_czy_trend",
+                             "vgm_odniesienie_trzymanie", "vgm_jak_dlugo_trzymac",
+                             "vgm_koszt_a_przewaga")):
             import wykres  # dopiero tutaj — reszta działa bez websocket-client
 
             try:
