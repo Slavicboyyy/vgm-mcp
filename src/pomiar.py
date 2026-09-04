@@ -499,6 +499,70 @@ def _najlepszy(wiersze: list) -> dict | None:
             "wejsc": n["wejsc"], "trafien_proc": n["trafien_proc"]}
 
 
+def odniesienie_trzymanie(po_ilu: int = 10, ile_swiec: int = 300,
+                          spread_proc: float = 0.02) -> dict:
+    """Ile daje samo trzymanie przez N świec, bez żadnego sygnału.
+
+    To uczciwszy punkt odniesienia niż losowe wejście: mówi, ile zarobiłby
+    ktoś, kto wchodzi zawsze i nie patrzy na wskaźniki. Sygnał ma sens
+    dopiero wtedy, gdy bije TĘ liczbę, nie samo placebo.
+    """
+    import analiza
+
+    swiece = analiza._swiece_z_wykresu(ile_swiec)
+    wszystkie = list(range(25, len(swiece) - po_ilu))
+    return _wynik_po(swiece, wszystkie, po_ilu, spread_proc)
+
+
+def czy_sygnal_czy_trend(wskaznik: str = "Bollinger", prog: float = 90,
+                         kierunek: str = "powyzej", po_ilu: int = 10,
+                         ile_swiec: int = 300, spread_proc: float = 0.02) -> dict:
+    """Rozstrzyga, czy warunek naprawdę coś wnosi, czy tylko łapie trend.
+
+    Porównuje cztery liczby: warunek, warunek odwrotny, samo trzymanie
+    i losowe wejście. Prawdziwy sygnał bije trzymanie, a jego odwrotność
+    wypada gorzej. Sam trend daje podobny wynik niezależnie od warunku.
+    """
+    odwrotny = "ponizej" if kierunek == "powyzej" else "powyzej"
+    prog_odwrotny = 100 - prog if wskaznik == "Bollinger" else prog
+
+    w = zmierz(wskaznik, prog, kierunek, po_ilu, ile_swiec, spread_proc)
+    o = zmierz(wskaznik, prog_odwrotny, odwrotny, po_ilu, ile_swiec, spread_proc)
+    trzymanie = odniesienie_trzymanie(po_ilu, ile_swiec, spread_proc)
+
+    zw = w.get("caly_okres", {}).get("sredni_zwrot_proc")
+    zo = o.get("caly_okres", {}).get("sredni_zwrot_proc")
+    zt = trzymanie.get("sredni_zwrot_proc")
+
+    nad_trzymaniem = round(zw - zt, 4) if zw is not None and zt is not None else None
+    rozstep = round(zw - zo, 4) if zw is not None and zo is not None else None
+
+    if nad_trzymaniem is None or rozstep is None:
+        ocena = "za mało danych do rozstrzygnięcia"
+    elif nad_trzymaniem <= 0:
+        ocena = (f"warunek daje {zw}%, a samo trzymanie {zt}% — "
+                 "sygnał nie wnosi nic ponad bycie na rynku")
+    elif rozstep <= 0:
+        ocena = (f"warunek i jego odwrotność dają podobnie ({zw}% i {zo}%) — "
+                 "to trend, nie sygnał")
+    else:
+        ocena = (f"warunek bije trzymanie o {nad_trzymaniem} pp, a jego odwrotność "
+                 f"wypada o {rozstep} pp gorzej — zachowuje się jak prawdziwy sygnał")
+
+    return {
+        "warunek": f"{wskaznik} {kierunek} {prog}",
+        "warunek_odwrotny": f"{wskaznik} {odwrotny} {prog_odwrotny}",
+        "zwrot_warunku_proc": zw,
+        "zwrot_odwrotnego_proc": zo,
+        "zwrot_trzymania_proc": zt,
+        "zwrot_losowego_proc": w.get("placebo_sredni_zwrot"),
+        "nad_trzymaniem_pp": nad_trzymaniem,
+        "rozstep_warunek_odwrotny_pp": rozstep,
+        "wejsc_warunku": w.get("caly_okres", {}).get("wejsc"),
+        "ocena": ocena,
+    }
+
+
 def _demo():
     print("Pomiar: czy RSI poniżej 30 cokolwiek zapowiada\n")
     w = zmierz_prog("RSI", 30, "ponizej", po_ilu=10)

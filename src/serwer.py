@@ -262,6 +262,27 @@ async def lista_narzedzi() -> list[Tool]:
                               "po_ilu": {"type": "integer", "default": 10},
                               "spread_proc": {"type": "number", "default": 0.02}}}),
 
+        Tool(name="vgm_sygnal_czy_trend",
+             description=("Rozstrzyga, czy warunek naprawdę coś wnosi, czy tylko łapie "
+                          "trend. Porównuje CZTERY liczby: warunek, warunek odwrotny, "
+                          "samo trzymanie przez N świec i losowe wejście. Prawdziwy sygnał "
+                          "bije trzymanie, a jego odwrotność wypada gorzej. Sam trend daje "
+                          "podobny wynik niezależnie od warunku. To ostrzejsze kryterium "
+                          "niż samo placebo: sygnał może bić losowe wejście, a mimo to "
+                          "przegrywać z nicnierobieniem."),
+             inputSchema={"type": "object",
+                          "properties": {
+                              "wskaznik": dict(S, default="Bollinger"),
+                              "prog": {"type": "number", "default": 90},
+                              "kierunek": dict(S, default="powyzej"),
+                              "po_ilu": {"type": "integer", "default": 10}}}),
+
+        Tool(name="vgm_odniesienie_trzymanie",
+             description=("Ile daje samo trzymanie przez N świec, bez żadnego sygnału. "
+                          "Uczciwszy punkt odniesienia niż losowe wejście."),
+             inputSchema={"type": "object",
+                          "properties": {"po_ilu": {"type": "integer", "default": 10}}}),
+
         Tool(name="vgm_przeglad_wskaznikow",
              description=("Siedem warunków na czterech wskaźnikach, jeden przebieg. "
                           "Odpowiada na pytanie, czy KTÓRYKOLWIEK cokolwiek zapowiada "
@@ -401,7 +422,8 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
         # ── wykres ──────────────────────────────────────────────────────
         if nazwa.startswith(("vgm_wykres", "vgm_wskaznik", "vgm_swiece",
                              "vgm_zmierz", "vgm_porownaj_progi",
-                             "vgm_przeglad_wskaznikow")):
+                             "vgm_przeglad_wskaznikow", "vgm_sygnal_czy_trend",
+                             "vgm_odniesienie_trzymanie")):
             import wykres  # dopiero tutaj — reszta działa bez websocket-client
 
             try:
@@ -445,6 +467,14 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                         a.get("wskaznik", "RSI"), a.get("prog", 30),
                         a.get("kierunek", "ponizej"), a.get("po_ilu", 10),
                         300, a.get("spread_proc", 0.02)))
+                if nazwa == "vgm_sygnal_czy_trend":
+                    import pomiar
+                    return ok(pomiar.czy_sygnal_czy_trend(
+                        a.get("wskaznik", "Bollinger"), a.get("prog", 90),
+                        a.get("kierunek", "powyzej"), a.get("po_ilu", 10)))
+                if nazwa == "vgm_odniesienie_trzymanie":
+                    import pomiar
+                    return ok(pomiar.odniesienie_trzymanie(a.get("po_ilu", 10)))
                 if nazwa == "vgm_przeglad_wskaznikow":
                     import pomiar
                     return ok(pomiar.przeglad_wskaznikow(

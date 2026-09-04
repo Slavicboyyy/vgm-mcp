@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Trzydzieści dziewięć narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
+Czterdzieści jeden narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -126,6 +126,8 @@ Ta grupa nie liczy sygnału. Sprawdza, czy sygnał jest cokolwiek wart.
 | `vgm_porownaj_progi` | ten sam pomiar na kilku progach naraz | pięć progów RSI |
 | `vgm_zmierz` | to samo dla czterech wskaźników | RSI, Bollinger, ADX, ATR |
 | `vgm_przeglad_wskaznikow` | siedem warunków jednym przebiegiem | GBPUSD 1h, 300 świec |
+| `vgm_sygnal_czy_trend` | czy warunek wnosi coś ponad sam trend | złoto, ropa, srebro |
+| `vgm_odniesienie_trzymanie` | ile daje samo trzymanie bez sygnału | 265 wejść |
 
 Cztery warunki, wszystkie muszą być spełnione naraz:
 
@@ -189,6 +191,38 @@ uniwersalny i nie ma tu dowodu na przewagę, bo trzysta świec to mało, nie by�
 sprawdzenia poza próbą, a poślizg nie wchodzi do rachunku. Jest to natomiast
 pierwszy kandydat, który przetrwał wszystkie cztery bariery na kilku instrumentach
 i przedziałach naraz.
+
+### Sygnał czy sam trend
+
+Placebo losowe ma słabość: sygnał może je bić, a mimo to przegrywać
+z nicnierobieniem. Dlatego `vgm_sygnal_czy_trend` porównuje cztery liczby
+naraz — warunek, warunek odwrotny, samo trzymanie i losowe wejście.
+
+Prawdziwy sygnał bije trzymanie, a jego odwrotność wypada gorzej. Sam trend
+daje podobny wynik niezależnie od warunku.
+
+Zmierzone na przedziale dziennym, warunek: powyżej 90% kanału Bollingera:
+
+```
+złoto    warunek 2,0118%   odwrotny 0,6022%    trzymanie 1,1922%
+         bije trzymanie o 0,82 pp, odwrotność gorsza o 1,41 pp -> sygnał
+
+ropa     warunek 3,1606%   odwrotny -0,0362%   trzymanie 1,6629%
+         bije trzymanie o 1,50 pp, odwrotność gorsza o 3,20 pp -> sygnał
+
+srebro   warunek 1,9928%   odwrotny -0,8155%   trzymanie 2,8028%
+         trzymanie BIJE warunek -> sygnał nie wnosi nic
+```
+
+Srebro pokazuje, po co to kryterium istnieje. Warunek dawał tam prawie dwa
+procent i sześćdziesiąt siedem procent trafień, ale samo trzymanie dawało
+dwa i osiem dziesiątych procent. Aktywne handlowanie wypadało gorzej niż
+nierobienie niczego.
+
+Próg kanału ma znaczenie tylko na ropie. Na złocie zwrot jest niemal płaski
+między progiem 70 a 95 (od 2,04 do 2,20 procent), więc sam próg niewiele wnosi.
+Na ropie zwrot rośnie do progu 80 i znika przy 95, gdzie zostaje dwadzieścia
+siedem wejść i zwrot 0,23 procent.
 ---
 
 ## Dane, do których sięga
