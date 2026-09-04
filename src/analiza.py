@@ -12,6 +12,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import time  # noqa: E402
+
 import dane  # noqa: E402
 import pola  # noqa: E402
 
@@ -268,6 +270,67 @@ def zmiennosc_swiec(ile: int = 200, okno: int = 20) -> dict:
         "wczesniejsze": b,
         "stosunek_zasiegow": round(a["sredni_zasieg"] / b["sredni_zasieg"], 3) if b["sredni_zasieg"] else None,
     }
+
+
+def swiece_wiele_przedzialow(przedzialy: list[str] | None = None,
+                             ile: int = 100) -> dict:
+    """Statystyka świec z kilku przedziałów czasu, jeden po drugim.
+
+    Przełącza wykres na każdy przedział, pobiera świece, liczy i wraca
+    na przedział wyjściowy. Trwa kilka sekund na przedział, bo wykres
+    musi wczytać dane.
+    """
+    import wykres
+
+    przedzialy = przedzialy or ["15", "60", "240"]
+    poczatkowy = wykres.stan()["interwal"]
+    wynik = {}
+
+    for p in przedzialy:
+        try:
+            wykres.ustaw_interwal(p)
+            time.sleep(3.5)          # wykres potrzebuje chwili na dane
+            wynik[p] = statystyka_swiec(ile)
+        except Exception as e:
+            wynik[p] = {"blad": str(e)[:90]}
+
+    try:
+        wykres.ustaw_interwal(poczatkowy)
+        time.sleep(2)
+    except Exception:
+        pass
+
+    return {"przedzial_wyjsciowy": poczatkowy, "wyniki": wynik}
+
+
+def obraz_pelny(symbol: str) -> dict:
+    """Wszystko, co wiemy o instrumencie, w jednym wywołaniu.
+
+    Łączy dane publiczne (91 pól, cztery przedziały czasu) z tym, co widać
+    na wykresie, gdy przeglądarka jest dostępna. Bez przeglądarki zwraca
+    samą część publiczną i mówi o tym wprost.
+    """
+    wynik = {
+        "symbol": symbol,
+        "pola": obraz(symbol),
+        "polozenie": polozenie(symbol),
+        "srednie": uklad_srednich(symbol),
+        "zgodnosc": zgodnosc_pelna(symbol),
+    }
+
+    try:
+        import wykres
+
+        z = wykres.zdrowie()
+        if z.get("gotowy"):
+            wynik["wykres"] = wykres.stan()
+            wynik["wskazniki_z_wykresu"] = wykres.wartosci()
+        else:
+            wynik["wykres"] = {"niedostepny": z.get("powod", "brak przeglądarki")}
+    except Exception as e:
+        wynik["wykres"] = {"niedostepny": str(e)[:80]}
+
+    return wynik
 
 
 def _demo():

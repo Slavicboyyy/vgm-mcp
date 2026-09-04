@@ -64,6 +64,13 @@ async def lista_narzedzi() -> list[Tool]:
            "jednym zapytaniem. Używaj, gdy chcesz zobaczyć całość naraz.",
            {**sym, **interw}, ["symbol"]),
 
+        _n("vgm_obraz_pelny",
+           "WSZYSTKO o instrumencie w jednym wywołaniu: 91 pól, położenie ceny, "
+           "układ średnich, zgodność przedziałów, a gdy przeglądarka jest dostępna "
+           "— także stan wykresu i wartości wskaźników z niego. "
+           "Bez przeglądarki zwraca samą część publiczną i mówi o tym wprost.",
+           {"symbol": dict(S, description="np. FX:EURUSD")}, ["symbol"]),
+
         _n("vgm_rynki",
            "Spis rynków przyjmowanych przez przegląd, wszystkie sprawdzone: "
            "forex, kryptowaluty, akcje amerykańskie, GPW, niemieckie, brytyjskie, "
@@ -202,6 +209,14 @@ async def lista_narzedzi() -> list[Tool]:
              inputSchema={"type": "object",
                           "properties": {"ile": {"type": "integer", "default": 200}}}),
 
+        Tool(name="vgm_swiece_przedzialy",
+             description=("Statystyka świec z kilku przedziałów czasu naraz. Przełącza "
+                          "wykres na każdy, liczy i wraca na wyjściowy. Trwa kilka sekund "
+                          "na przedział, bo wykres musi wczytać dane."),
+             inputSchema={"type": "object",
+                          "properties": {"przedzialy": {"type": "array", "items": {"type": "string"}},
+                                         "ile": {"type": "integer", "default": 100}}}),
+
         Tool(name="vgm_swiece_zmiennosc",
              description=("Zmienność w dwóch oknach: świeższym i wcześniejszym, plus ich "
                           "stosunek. Podział na dwie części to zasada pomiaru — jedna "
@@ -256,6 +271,8 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
             return ok(analiza.obraz(a["symbol"], a.get("interwal")))
         if nazwa == "vgm_rynki":
             return ok(pola.RYNKI)
+        if nazwa == "vgm_obraz_pelny":
+            return ok(analiza.obraz_pelny(a["symbol"]))
         if nazwa == "vgm_pola":
             return ok({g: lista for g, lista in pola.GRUPY.items()}
                       | {"interwaly_zmierzone": pola.INTERWALY_PEWNE})
@@ -330,6 +347,9 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                     return ok(wykres.swiece(a.get("ile", 100)))
                 if nazwa == "vgm_swiece_statystyka":
                     return ok(analiza.statystyka_swiec(a.get("ile", 200)))
+                if nazwa == "vgm_swiece_przedzialy":
+                    return ok(analiza.swiece_wiele_przedzialow(
+                        a.get("przedzialy"), a.get("ile", 100)))
                 if nazwa == "vgm_swiece_zmiennosc":
                     return ok(analiza.zmiennosc_swiec(a.get("ile", 200), a.get("okno", 20)))
                 if nazwa == "vgm_wykres_zrzut":

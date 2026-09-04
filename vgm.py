@@ -2,7 +2,7 @@
 """vgm — TradingView z terminala. Te same narzędzia co serwer MCP, bez klienta MCP.
 
     vgm odczyt FX:EURUSD                 cena i wskaźniki
-    vgm obraz FX:EURUSD                  wszystkie 62 pola
+    vgm obraz FX:EURUSD                  wszystkie 91 pól
     vgm polozenie FX:EURUSD              miejsce ceny względem odniesień
     vgm mtf FX:EURUSD                    wskaźnik na kilku przedziałach
     vgm zgodnosc FX:EURUSD               ile przedziałów mówi to samo
@@ -13,6 +13,7 @@
     vgm wykres symbol FX:EURUSD          zmiana instrumentu
     vgm wykres zrzut                     obraz wykresu do pliku
     vgm swiece 200                       świece z wykresu
+    vgm wszystko FX:EURUSD               pełny obraz: pola, położenie, wykres
 
 Dodaj --json, żeby dostać surowy wynik zamiast tabelki.
 """
@@ -60,7 +61,7 @@ def main():
     p.add_argument("--json", action="store_true", help="surowy wynik zamiast tabelki")
     pod = p.add_subparsers(dest="cmd")
 
-    for nazwa, opis in [("odczyt", "cena i wskaźniki"), ("obraz", "wszystkie 62 pola"),
+    for nazwa, opis in [("odczyt", "cena i wskaźniki"), ("obraz", "wszystkie 91 pól"),
                         ("polozenie", "miejsce ceny względem odniesień"),
                         ("srednie", "układ średnich"), ("mtf", "wskaźnik na kilku przedziałach"),
                         ("zgodnosc", "ile przedziałów mówi to samo")]:
@@ -68,6 +69,9 @@ def main():
         s.add_argument("symbol")
         if nazwa in ("obraz", "polozenie", "srednie"):
             s.add_argument("--interwal")
+
+    s = pod.add_parser("wszystko", help="pelny obraz instrumentu")
+    s.add_argument("symbol")
 
     s = pod.add_parser("porownaj", help="instrumenty obok siebie")
     s.add_argument("symbole", nargs="+")
@@ -113,6 +117,8 @@ def main():
             wypisz(dane.mtf(a.symbol), a.json)
         elif a.cmd == "zgodnosc":
             wypisz(dane.zgodnosc(a.symbol), a.json)
+        elif a.cmd == "wszystko":
+            wypisz(analiza.obraz_pelny(a.symbol), a.json)
         elif a.cmd == "porownaj":
             wypisz(analiza.porownaj(a.symbole), a.json)
         elif a.cmd == "pola":

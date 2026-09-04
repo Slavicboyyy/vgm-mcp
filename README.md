@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Trzydzieści jeden narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
+Trzydzieści trzy narzędzia plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -33,6 +33,8 @@ VGM bierze wszystkie i nie potrzebuje do tego okna.
 | `vgm_odczyt` | wybrane pola dla instrumentu | FX:EURUSD, 91 pól |
 | `vgm_obraz` | wszystkie 91 pól naraz, w dziewięciu grupach | FX:EURUSD |
 | `vgm_pola` | spis dostępnych pól, do sprawdzenia przed zgadywaniem nazwy | tylko wywołanie |
+| `vgm_rynki` | spis dziesięciu sprawdzonych rynków | tylko wywołanie |
+| `vgm_obraz_pelny` | wszystko o instrumencie jednym wywołaniem | FX:EURUSD, 6 sekcji |
 
 ### Położenie ceny
 
@@ -79,6 +81,7 @@ Ta grupa wymaga otwartej karty z TradingView. Port podajesz w `VGM_CDP_PORT`.
 | `vgm_wykres_zrzut` | obraz wykresu do pliku PNG | 84 KB, wykres widoczny |
 | `vgm_swiece_statystyka` | rozpiętość, zasięg świec, udział wzrostowych, luki | 200 świec GBPUSD |
 | `vgm_swiece_zmiennosc` | zmienność w dwóch oknach i ich stosunek | 2 okna po 20 świec |
+| `vgm_swiece_przedzialy` | statystyka świec z kilku przedziałów naraz | 15, 60 i 240 minut |
 
 `vgm_wykres_wartosci` czyta również wskaźniki własne, napisane w Pine. Publiczne
 dane ich nie znają, bo istnieją tylko na Twoim wykresie.
@@ -223,6 +226,7 @@ vgm pine moj-wskaznik.pine        sprawdzenie kodu
 vgm wykres stan                   co jest na wykresie
 vgm wykres zrzut obraz.png        zapis wykresu
 vgm swiece 200 --statystyka       liczby ze świec
+vgm wszystko FX:EURUSD            pełny obraz jednym poleceniem
 ```
 
 Każde polecenie przyjmuje `--json`, gdy wynik ma iść dalej do skryptu.
