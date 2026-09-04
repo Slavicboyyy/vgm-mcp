@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Dwadzieścia osiem narzędzi. Sześćdziesiąt dwa pola danych. Sześć przedziałów czasowych
+Trzydzieści narzędzi. Sześćdziesiąt dwa pola danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -77,6 +77,8 @@ Ta grupa wymaga otwartej karty z TradingView. Port podajesz w `VGM_CDP_PORT`.
 | `vgm_wskaznik_usun` | usunięcie po identyfikatorze | RSI usunięty |
 | `vgm_wykres_swiece` | świece historyczne z pełnym OHLCV | 300 świec GBPUSD 1h |
 | `vgm_wykres_zrzut` | obraz wykresu do pliku PNG | 84 KB, wykres widoczny |
+| `vgm_swiece_statystyka` | rozpiętość, zasięg świec, udział wzrostowych, luki | 200 świec GBPUSD |
+| `vgm_swiece_zmiennosc` | zmienność w dwóch oknach i ich stosunek | 2 okna po 20 świec |
 
 `vgm_wykres_wartosci` czyta również wskaźniki własne, napisane w Pine. Publiczne
 dane ich nie znają, bo istnieją tylko na Twoim wykresie.

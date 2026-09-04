@@ -188,6 +188,88 @@ def skan_wlasny(rynek: str, warunki: list[dict], pola_do: list[str] | None = Non
                          pola_do or ["close", "change", "RSI", "ADX", "volume"], ile)
 
 
+# ── liczenie na świecach z wykresu ──────────────────────────────────────
+def _swiece_z_wykresu(ile=200):
+    """Pobiera świece z otwartego wykresu. Osobno, żeby reszta modułu
+    działała bez przeglądarki."""
+    import wykres
+    w = wykres.swiece(ile)
+    return w["swiece"]
+
+
+def statystyka_swiec(ile: int = 200) -> dict:
+    """Liczby policzone na świecach z wykresu, bez zewnętrznego źródła danych.
+
+    Zwraca surowe miary: rozpiętość, średni zasięg świecy, udział świec
+    wzrostowych, największa luka. Nie ocenia ich — ocena wymaga pomiaru.
+    """
+    s = _swiece_z_wykresu(ile)
+    if len(s) < 2:
+        raise dane.BladTV("za mało świec do policzenia czegokolwiek")
+
+    zamkniecia = [x["zamkniecie"] for x in s]
+    zasiegi = [x["szczyt"] - x["dolek"] for x in s]
+    wzrostowe = sum(1 for x in s if x["zamkniecie"] > x["otwarcie"])
+
+    luki = []
+    for i in range(1, len(s)):
+        luka = s[i]["otwarcie"] - s[i - 1]["zamkniecie"]
+        if luka:
+            luki.append(abs(luka))
+
+    najw, najn = max(zamkniecia), min(zamkniecia)
+    ostatnia = zamkniecia[-1]
+
+    return {
+        "swiec": len(s),
+        "od": s[0]["czas"],
+        "do": s[-1]["czas"],
+        "najwyzsze_zamkniecie": najw,
+        "najnizsze_zamkniecie": najn,
+        "ostatnie_zamkniecie": ostatnia,
+        "w_zakresie_proc": round((ostatnia - najn) / (najw - najn) * 100, 1) if najw != najn else None,
+        "sredni_zasieg": round(sum(zasiegi) / len(zasiegi), 6),
+        "najwiekszy_zasieg": round(max(zasiegi), 6),
+        "swiec_wzrostowych": wzrostowe,
+        "udzial_wzrostowych_proc": round(wzrostowe / len(s) * 100, 1),
+        "najwieksza_luka": round(max(luki), 6) if luki else 0,
+        "zmiana_od_poczatku_proc": round((ostatnia - zamkniecia[0]) / zamkniecia[0] * 100, 3),
+    }
+
+
+def zmiennosc_swiec(ile: int = 200, okno: int = 20) -> dict:
+    """Zmienność liczona w dwóch oknach — świeższym i wcześniejszym.
+
+    Podział na dwie części to ta sama zasada, którą stosujemy przy każdym
+    pomiarze: liczba z jednego okresu nic nie mówi, dopóki nie zobaczysz,
+    czy powtarza się w drugim.
+    """
+    s = _swiece_z_wykresu(ile)
+    if len(s) < okno * 2:
+        raise dane.BladTV(f"potrzeba co najmniej {okno * 2} świec, jest {len(s)}")
+
+    def miara(czesc):
+        z = [x["szczyt"] - x["dolek"] for x in czesc]
+        c = [x["zamkniecie"] for x in czesc]
+        sredni = sum(z) / len(z)
+        return {
+            "sredni_zasieg": round(sredni, 6),
+            "sredni_zasieg_proc_ceny": round(sredni / (sum(c) / len(c)) * 100, 4),
+            "zakres": round(max(c) - min(c), 6),
+        }
+
+    swiezsze = s[-okno:]
+    wczesniejsze = s[-okno * 2:-okno]
+    a, b = miara(swiezsze), miara(wczesniejsze)
+
+    return {
+        "okno": okno,
+        "swiezsze": a,
+        "wczesniejsze": b,
+        "stosunek_zasiegow": round(a["sredni_zasieg"] / b["sredni_zasieg"], 3) if b["sredni_zasieg"] else None,
+    }
+
+
 def _demo():
     print("1. pełny obraz — 62 pola w dziewięciu grupach")
     o = obraz("FX:EURUSD")

@@ -189,6 +189,23 @@ async def lista_narzedzi() -> list[Tool]:
              inputSchema={"type": "object",
                           "properties": {"ile": {"type": "integer", "default": 100}}}),
 
+        Tool(name="vgm_swiece_statystyka",
+             description=("Liczby policzone na świecach z wykresu: rozpiętość, miejsce "
+                          "ceny w zakresie, średni zasięg świecy, udział świec wzrostowych, "
+                          "największa luka, zmiana od początku okresu. "
+                          "Bez zewnętrznego źródła danych."),
+             inputSchema={"type": "object",
+                          "properties": {"ile": {"type": "integer", "default": 200}}}),
+
+        Tool(name="vgm_swiece_zmiennosc",
+             description=("Zmienność w dwóch oknach: świeższym i wcześniejszym, plus ich "
+                          "stosunek. Podział na dwie części to zasada pomiaru — jedna "
+                          "liczba nic nie mówi, dopóki nie widać, czy powtarza się w drugim "
+                          "okresie."),
+             inputSchema={"type": "object",
+                          "properties": {"ile": {"type": "integer", "default": 200},
+                                         "okno": {"type": "integer", "default": 20}}}),
+
         Tool(name="vgm_wykres_zrzut",
              description=("Zapisuje obraz wykresu do pliku PNG i zwraca ścieżkę. "
                           "Pozwala OBEJRZEĆ wykres, nie tylko odczytać z niego liczby. "
@@ -282,7 +299,7 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                 return ok({"blad": str(e), "narzedzie": nazwa})
 
         # ── wykres ──────────────────────────────────────────────────────
-        if nazwa.startswith(("vgm_wykres", "vgm_wskaznik")):
+        if nazwa.startswith(("vgm_wykres", "vgm_wskaznik", "vgm_swiece")):
             import wykres  # dopiero tutaj — reszta działa bez websocket-client
 
             try:
@@ -304,6 +321,10 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                     return ok(wykres.usun_wskaznik(a["id"]))
                 if nazwa == "vgm_wykres_swiece":
                     return ok(wykres.swiece(a.get("ile", 100)))
+                if nazwa == "vgm_swiece_statystyka":
+                    return ok(analiza.statystyka_swiec(a.get("ile", 200)))
+                if nazwa == "vgm_swiece_zmiennosc":
+                    return ok(analiza.zmiennosc_swiec(a.get("ile", 200), a.get("okno", 20)))
                 if nazwa == "vgm_wykres_zrzut":
                     return ok(wykres.zrzut(a.get("sciezka"), a.get("zamknij_okna", True)))
             except wykres.BladWykresu as e:
