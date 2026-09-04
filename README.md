@@ -9,21 +9,15 @@ jednym zapytaniem.
 
 ## Dlaczego powstał
 
-Na GitHubie leży 410 projektów z „tradingview mcp" w nazwie. Sklonowałem czternaście
-największych i policzyłem, co naprawdę mają w kodzie, a nie w opisie, bo opisy potrafią kłamać.
-Wyszło 598 narzędzi, z czego 246 to osobne nazwy. Reszta to kopie i widełki tego samego.
+Większość narzędzi tego typu wymaga uruchomionej aplikacji TradingView albo własnego
+okna przeglądarki. Nie ruszą więc na serwerze ani w tle, a już na pewno nie bez
+człowieka przy monitorze.
 
-Wnioski z tego liczenia były trzy.
+Drugi problem jest cichszy: sięgają po garść pól, zwykle sześć albo dwanaście.
+TradingView udostępnia publicznie znacznie więcej. Przy sprawdzeniu okazało się,
+że działa sześćdziesiąt dwa.
 
-Po pierwsze, prawie wszystkie wymagają aplikacji TradingView Desktop albo własnego okna
-przeglądarki. Czyli nie ruszą na serwerze ani w tle, a już na pewno nie bez człowieka przy monitorze.
-
-Po drugie, żaden nie sięga po pełen zestaw pól, który TradingView udostępnia publicznie.
-Biorą sześć, czasem dwanaście, a przy sprawdzeniu okazało się, że działa sześćdziesiąt dwa.
-
-Po trzecie, licencje. Z siedemnastu przejrzanych repozytoriów tylko osiem ma MIT, a pozostałe
-nie mają żadnej, więc formalnie nikt nie ma prawa użyć ich kodu. Z tych nie wziąłem
-ani linijki. Posłużyły za podpowiedź, jak nazywać polecenia, i tyle.
+VGM bierze wszystkie i nie potrzebuje do tego okna.
 
 ---
 
@@ -174,12 +168,6 @@ sugerowałoby przewagę, której nikt nie zmierzył. To najdroższy rodzaj kłam
 **Odstęp między zapytaniami: 1,2 sekundy.** Wymuszony w kodzie. Przy odpowiedzi 403
 albo 429 serwer staje i nie ponawia. Ponawianie przy tych kodach kończy się blokadą adresu.
 Sprawdzone drogą doświadczenia.
-
----
-
-## Skąd wzięte
-
-Pełna lista przejrzanych projektów wraz z tym, co każdy ma w kodzie: [`inwentarz.md`](inwentarz.md).
 
 ---
 
