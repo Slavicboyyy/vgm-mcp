@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Dwadzieścia sześć narzędzi. Sześćdziesiąt dwa pola danych. Sześć przedziałów czasowych
+Dwadzieścia osiem narzędzi. Sześćdziesiąt dwa pola danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -75,9 +75,18 @@ Ta grupa wymaga otwartej karty z TradingView. Port podajesz w `VGM_CDP_PORT`.
 | `vgm_wykres_typ` | świece, słupki, linia, Heikin Ashi |
 | `vgm_wskaznik_dodaj` | dodanie wskaźnika po nazwie |
 | `vgm_wskaznik_usun` | usunięcie po identyfikatorze |
+| `vgm_wykres_swiece` | świece historyczne z pełnym OHLCV |
+| `vgm_wykres_zrzut` | obraz wykresu do pliku PNG |
 
 `vgm_wykres_wartosci` czyta również wskaźniki własne, napisane w Pine. Publiczne
 dane ich nie znają, bo istnieją tylko na Twoim wykresie.
+
+`vgm_wykres_swiece` bierze historię z serii, którą wykres i tak ma wczytaną. Zwykle
+dostępnych jest kilkaset świec z czasem, otwarciem, szczytem, dołkiem, zamknięciem
+i wolumenem. Żadne osobne źródło danych nie jest potrzebne.
+
+`vgm_wykres_zrzut` zapisuje obraz wykresu do pliku. Model może dzięki temu wykres
+obejrzeć, a nie tylko odczytać z niego liczby.
 
 ### Pine Script
 
@@ -180,11 +189,13 @@ Lista jawna. Lepiej wiedzieć z góry, niż odkryć w trakcie.
 
 | brakuje | powód |
 |---|---|
-| wstawianie Pine na wykres | sprawdzanie kodu działa, wstawianie jeszcze nie |
-| Strategy Tester | wyniki i tak są tylko poglądowe, więc niski priorytet |
-| świece historyczne | inne źródło, jeszcze niesprawdzone |
-| alerty | do zrobienia |
+| wstawianie Pine na wykres | wymaga zalogowanego edytora |
+| alerty | wymagają konta |
 | rysowanie na wykresie | do zrobienia |
+| Strategy Tester | wyniki są i tak tylko poglądowe, więc niski priorytet |
+
+Warstwa wykresu działa bez logowania w zakresie odczytu i sterowania. Zapisywanie
+skryptów, alerty i listy obserwowanych wymagają zalogowanej sesji.
 
 Te rzeczy są zaplanowane, ale żadnej nie ma w kodzie. Nie chcę, żeby ktoś liczył
 na coś, czego nie zbudowałem.

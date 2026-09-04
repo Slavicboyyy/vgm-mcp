@@ -195,6 +195,100 @@ def ustaw_typ(typ: int) -> dict:
     """)))
 
 
+def swiece(ile: int = 100) -> dict:
+    """Świece historyczne z wykresu: czas, otwarcie, szczyt, dołek, zamknięcie, wolumen.
+
+    Bierze je z serii, którą wykres i tak ma wczytaną, więc nie potrzeba osobnego
+    źródła danych ani konta. Ile świec jest dostępnych, zależy od tego, ile
+    wykres zdążył wczytać — zwykle kilkaset.
+    """
+    n = max(1, min(int(ile), 5000))
+    w = _sprawdz(_wykonaj(_na_wykresie(f"""
+        var cw = ch._chartWidget;
+        if (!cw) return {{blad: 'brak dostępu do modelu wykresu'}};
+        var zrodla = cw.model().model().dataSources();
+        var seria = null;
+        for (var i = 0; i < zrodla.length; i++) {{
+          if (!zrodla[i].metaInfo && zrodla[i].bars) {{ seria = zrodla[i]; break; }}
+        }}
+        if (!seria) return {{blad: 'nie znalazłem serii świec'}};
+        var b = seria.bars();
+        var pierwszy = b.firstIndex(), ostatni = b.lastIndex();
+        var od = Math.max(pierwszy, ostatni - {n} + 1);
+        var out = [];
+        for (var k = od; k <= ostatni; k++) {{
+          var v = b.valueAt(k);
+          if (v) out.push(v);
+        }}
+        return {{dostepnych: b.size(), zwrocono: out.length, swiece: out}};
+    """), czekaj=40))
+
+    nazwane = []
+    for s in w.get("swiece", []):
+        if len(s) >= 5:
+            nazwane.append({
+                "czas": s[0],
+                "otwarcie": s[1], "szczyt": s[2], "dolek": s[3], "zamkniecie": s[4],
+                "wolumen": s[5] if len(s) > 5 else None,
+            })
+    return {"dostepnych": w.get("dostepnych"), "zwrocono": len(nazwane), "swiece": nazwane}
+
+
+def zrzut(sciezka: str | None = None, zamknij_okna: bool = True) -> dict:
+    """Zapisuje obraz wykresu do pliku PNG.
+
+    Dzięki temu model może wykres OBEJRZEĆ, nie tylko odczytać z niego liczby.
+    Domyślnie najpierw zamyka okna zachęt, które lubią zasłonić widok.
+    """
+    import base64
+    import pathlib
+    import tempfile
+
+    if zamknij_okna:
+        try:
+            _wykonaj("""
+                (function(){
+                  var n = 0;
+                  document.querySelectorAll(
+                    'button[aria-label*="lose"],button[data-name="close"],[class*="closeButton"]'
+                  ).forEach(function(b){ try { b.click(); n++; } catch(e){} });
+                  document.dispatchEvent(new KeyboardEvent('keydown',
+                    {key:'Escape', keyCode:27, bubbles:true}));
+                  return n;
+                })()
+            """)
+            time.sleep(1.5)
+        except BladWykresu:
+            pass  # zamykanie okien to wygoda, nie warunek
+
+    k = _karta()
+    _licznik[0] += 1
+    nr = _licznik[0]
+    ws = websocket.create_connection(k["webSocketDebuggerUrl"], timeout=45)
+    try:
+        ws.send(json.dumps({"id": nr, "method": "Page.captureScreenshot",
+                            "params": {"format": "png"}}))
+        koniec = time.time() + 45
+        while time.time() < koniec:
+            o = json.loads(ws.recv())
+            if o.get("id") != nr:
+                continue
+            d = o.get("result", {}).get("data")
+            if not d:
+                raise BladWykresu("przeglądarka nie zwróciła obrazu")
+            surowe = base64.b64decode(d)
+            if sciezka is None:
+                sciezka = tempfile.NamedTemporaryFile(
+                    suffix=".png", delete=False, prefix="vgm-wykres-").name
+            p = pathlib.Path(sciezka)
+            p.write_bytes(surowe)
+            return {"plik": str(p), "bajtow": len(surowe),
+                    "tytul": k.get("title", "")[:70]}
+        raise BladWykresu("przeglądarka nie odpowiedziała w 45s")
+    finally:
+        ws.close()
+
+
 def wartosci() -> list:
     """Bieżące wartości wszystkich wskaźników NA WYKRESIE.
 

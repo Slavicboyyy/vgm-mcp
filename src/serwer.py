@@ -181,6 +181,23 @@ async def lista_narzedzi() -> list[Tool]:
              inputSchema={"type": "object",
                           "properties": {"id": S}, "required": ["id"]}),
 
+        Tool(name="vgm_wykres_swiece",
+             description=("Świece historyczne z wykresu: czas, otwarcie, szczyt, dołek, "
+                          "zamknięcie, wolumen. Bierze je z serii, którą wykres ma "
+                          "wczytaną, więc nie potrzeba osobnego źródła ani konta. "
+                          "Zwykle dostępnych jest kilkaset świec."),
+             inputSchema={"type": "object",
+                          "properties": {"ile": {"type": "integer", "default": 100}}}),
+
+        Tool(name="vgm_wykres_zrzut",
+             description=("Zapisuje obraz wykresu do pliku PNG i zwraca ścieżkę. "
+                          "Pozwala OBEJRZEĆ wykres, nie tylko odczytać z niego liczby. "
+                          "Przed zrzutem zamyka okna zachęt zasłaniające widok."),
+             inputSchema={"type": "object",
+                          "properties": {
+                              "sciezka": dict(S, description="Gdzie zapisać. Pominięta = plik tymczasowy"),
+                              "zamknij_okna": {"type": "boolean", "default": True}}}),
+
         # ── Pine Script: bez przeglądarki ───────────────────────────────
         Tool(name="vgm_pine_sprawdz",
              description=("Kompiluje kod Pine w kompilatorze TradingView i zwraca błędy "
@@ -285,6 +302,10 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                     return ok(wykres.dodaj_wskaznik(a["nazwa"]))
                 if nazwa == "vgm_wskaznik_usun":
                     return ok(wykres.usun_wskaznik(a["id"]))
+                if nazwa == "vgm_wykres_swiece":
+                    return ok(wykres.swiece(a.get("ile", 100)))
+                if nazwa == "vgm_wykres_zrzut":
+                    return ok(wykres.zrzut(a.get("sciezka"), a.get("zamknij_okna", True)))
             except wykres.BladWykresu as e:
                 return ok({"blad": str(e), "narzedzie": nazwa,
                            "podpowiedz": "sprawdź vgm_wykres_zdrowie"})
