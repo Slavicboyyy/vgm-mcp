@@ -415,6 +415,50 @@ def _przejdz(url: str):
         ws.close()
 
 
+# Ile sekund powinno dzielić dwie sąsiednie świece przy danym przedziale.
+ODSTEP_SEKUND = {
+    "1": 60, "3": 180, "5": 300, "15": 900, "30": 1800,
+    "60": 3600, "120": 7200, "180": 10800, "240": 14400,
+    "D": 86400, "1D": 86400, "W": 604800, "1W": 604800,
+}
+
+
+def sprawdz_przedzial(interwal: str, tolerancja: float = 0.2) -> dict:
+    """Czy świece naprawdę mają odstęp odpowiadający przedziałowi.
+
+    Zmierzone: `setResolution` zmienia nazwę przedziału natychmiast, ale świece
+    potrafią zostać z poprzedniego. Wykres pokazuje wtedy "1D", a odstęp między
+    świecami wynosi godzinę. Sama nazwa nie wystarcza, trzeba zmierzyć odstęp.
+    """
+    oczekiwany = ODSTEP_SEKUND.get(str(interwal).upper().lstrip("1")
+                                   if str(interwal).upper() in ("1D", "1W")
+                                   else str(interwal))
+    if oczekiwany is None:
+        return {"potwierdzone": None, "powod": f"nie znam odstępu dla {interwal}"}
+
+    try:
+        w = swiece(3)
+    except BladWykresu as e:
+        return {"potwierdzone": False, "powod": str(e)[:70]}
+
+    s = w.get("swiece") or []
+    if len(s) < 2:
+        return {"potwierdzone": False, "powod": "za mało świec do zmierzenia odstępu"}
+
+    faktyczny = s[-1]["czas"] - s[-2]["czas"]
+    zgadza = abs(faktyczny - oczekiwany) / oczekiwany <= tolerancja
+
+    return {
+        "potwierdzone": zgadza,
+        "przedzial": interwal,
+        "odstep_oczekiwany_s": oczekiwany,
+        "odstep_faktyczny_s": faktyczny,
+        "powod": "" if zgadza else
+                 f"świece mają odstęp {faktyczny}s zamiast {oczekiwany}s — "
+                 "wykres nie przeładował danych",
+    }
+
+
 def przelacz(symbol: str, interwal: str | None = None, sekund: float = 30) -> dict:
     """Zmienia instrument i CZEKA na jego prawdziwe dane.
 
@@ -436,8 +480,17 @@ def przelacz(symbol: str, interwal: str | None = None, sekund: float = 30) -> di
         time.sleep(2)
 
     w = czekaj_na_dane(symbol, min(sekund / 3, 8))
-    if w.get("potwierdzone"):
-        return {"symbol": symbol, "interwal": interwal, "sposob": "zmiana na miejscu", **w}
+    p_ok = True
+    p_info = {}
+    if interwal:
+        p_info = sprawdz_przedzial(interwal)
+        p_ok = p_info.get("potwierdzone") is not False
+
+    if w.get("potwierdzone") and p_ok:
+        return {"symbol": symbol, "interwal": interwal,
+                "sposob": "zmiana na miejscu", **w,
+                "przedzial_sprawdzony": p_info.get("potwierdzone"),
+                "odstep_swiec_s": p_info.get("odstep_faktyczny_s")}
 
     # dane nie nadążyły — przeładowanie z symbolem w adresie
     adres = f"https://www.tradingview.com/chart/?symbol={urllib.parse.quote(symbol)}"
@@ -447,8 +500,13 @@ def przelacz(symbol: str, interwal: str | None = None, sekund: float = 30) -> di
     time.sleep(12)
 
     w2 = czekaj_na_dane(symbol, sekund)
+    p2 = sprawdz_przedzial(interwal) if interwal else {}
     return {"symbol": symbol, "interwal": interwal,
-            "sposob": "przeładowanie strony", **w2}
+            "sposob": "przeładowanie strony", **w2,
+            "przedzial_sprawdzony": p2.get("potwierdzone"),
+            "odstep_swiec_s": p2.get("odstep_faktyczny_s"),
+            "potwierdzone": bool(w2.get("potwierdzone"))
+                            and p2.get("potwierdzone") is not False}
 
 
 def _demo():

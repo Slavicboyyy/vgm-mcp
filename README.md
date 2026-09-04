@@ -154,15 +154,17 @@ najładniejszy wiersz.
 
 ### Pierwszy warunek, który przeszedł
 
-Po naprawie pułapki opisanej wyżej pomiar na trzech instrumentach dał
-pierwszy wynik pozytywny:
+Pomiar na złocie, cztery przedziały czasu, dane zweryfikowane:
 
 ```
-COMEX:GC1! 1h    Bollinger powyżej 90:  +0,3421%   34 wejścia
-                 RSI powyżej 70 i ADX powyżej 30 też przeszły
+COMEX:GC1!, warunek: położenie powyżej 90% kanału Bollingera
 
-FX:EURUSD 1h     nic nie przeszło
-COINBASE:BTCUSD  nic nie przeszło (ADX < 15 dał 2,82%, ale 17 wejść)
+15 min    41 wejść    +0,1964%   58,5% trafień   przewaga 0,1651%   przeszedł
+60 min    34 wejścia  +0,3421%   73,5% trafień   przewaga 0,4213%   przeszedł
+240 min   37 wejść    +0,2618%   54,1% trafień   przewaga -0,018%   odpadł
+dzienny   54 wejścia  +2,0130%   59,3% trafień   przewaga 1,0435%   przeszedł
+
+Na EURUSD i bitcoinie ten sam warunek nie przeszedł.
 ```
 
 To jeden pomiar na trzystu świecach, więc nie dowodzi przewagi.
@@ -325,6 +327,16 @@ takich danych jest bezwartościowa i wygląda dokładnie tak samo jak prawdziwa.
 Dlatego przed czytaniem świec używaj `vgm_wykres_przelacz`. Sprawdza
 on cenę krzyżowo z publicznym punktem TradingView i, gdy trzeba, przeładowuje
 stronę z symbolem wpisanym w adres.
+
+🔴 **Druga pułapka, tego samego rodzaju.** Zmiana przedziału czasu przez
+`vgm_wykres_interwal` też zmienia samą nazwę. Zmierzone: wykres pokazywał
+"1D", a odstęp między świecami wynosił godzinę. Cztery różne przedziały dawały
+wtedy identyczne wyniki pomiaru.
+
+`vgm_wykres_przelacz` sprawdza więc dwie rzeczy naraz: czy cena zgadza się
+z publicznym punktem i czy **odstęp między świecami odpowiada przedziałowi**.
+Sama nazwa nie wystarcza w żadnym z tych dwóch przypadków.
+
 
 
 **To nie są ceny brokera.** Dane idą z publicznego punktu TradingView i są liczone
