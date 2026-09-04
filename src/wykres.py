@@ -154,6 +154,51 @@ def zdrowie() -> dict:
     return wynik
 
 
+def otworz_karte(symbol: str = "FX:EURUSD", interwal: str | None = None,
+                 sekund: float = 20) -> dict:
+    """Otwiera nową kartę z wykresem, gdy żadna nie jest otwarta.
+
+    Karta potrafi zniknąć: ktoś ją zamknie, przeglądarka ją ubije przy
+    przeciążeniu, sesja się skończy. Bez tego każde narzędzie wykresu
+    przestaje działać, choć nic nie jest zepsute.
+    """
+    adres = f"https://www.tradingview.com/chart/?symbol={urllib.parse.quote(symbol)}"
+    if interwal:
+        adres += f"&interval={urllib.parse.quote(str(interwal))}"
+
+    zad = urllib.request.Request(f"http://localhost:{PORT}/json/new?{adres}",
+                                 method="PUT")
+    try:
+        odp = json.loads(urllib.request.urlopen(zad, timeout=25).read())
+    except Exception as e:
+        raise BladWykresu(
+            f"nie udało się otworzyć karty ({type(e).__name__}). "
+            f"Sprawdź, czy przeglądarka słucha na porcie {PORT}."
+        ) from e
+
+    koniec = time.time() + sekund
+    while time.time() < koniec:
+        time.sleep(3)
+        try:
+            z = zdrowie()
+            if z.get("gotowy"):
+                return {"otwarta": True, "id": odp.get("id", "")[:12],
+                        "symbol": z.get("symbol"), "sekund": round(sekund, 1)}
+        except BladWykresu:
+            pass
+
+    return {"otwarta": False, "id": odp.get("id", "")[:12],
+            "powod": f"karta powstała, ale wykres nie wczytał się w {sekund}s"}
+
+
+def zapewnij_karte(symbol: str = "FX:EURUSD") -> dict:
+    """Sprawdza wykres i otwiera kartę, gdy jej nie ma. Nic nie robi, gdy jest."""
+    z = zdrowie()
+    if z.get("gotowy"):
+        return {"bylo_gotowe": True, "symbol": z.get("symbol")}
+    return {"bylo_gotowe": False, **otworz_karte(symbol)}
+
+
 def stan() -> dict:
     """Co jest teraz na wykresie: instrument, przedział czasu, typ, wskaźniki."""
     return _sprawdz(_wykonaj(_na_wykresie("""
@@ -443,6 +488,7 @@ def czekaj_na_dane(symbol: str, sekund: float = 25, tolerancja: float = 0.05) ->
 
     koniec = time.time() + sekund
     ostatnia = None
+    odstep = 0.3          # na początku sprawdzamy często, potem coraz rzadziej
     while time.time() < koniec:
         try:
             w = swiece(2)
@@ -453,7 +499,8 @@ def czekaj_na_dane(symbol: str, sekund: float = 25, tolerancja: float = 0.05) ->
                             "cena_odniesienia": odn}
         except BladWykresu:
             pass
-        time.sleep(1.5)
+        time.sleep(odstep)
+        odstep = min(odstep * 1.6, 2.0)
 
     return {"potwierdzone": False,
             "powod": f"po {sekund}s świece nadal nie pasują do instrumentu",
@@ -537,11 +584,12 @@ def przelacz(symbol: str, interwal: str | None = None, sekund: float = 30) -> di
     w adresie. To zawsze daje właściwe dane, tylko trwa dłużej.
     """
     ustaw_symbol(symbol)
-    time.sleep(2)
     if interwal:
         ustaw_interwal(interwal)
-        time.sleep(2)
 
+    # Bez sztywnych pauz: zmierzone, że dane bywają gotowe w 0,2 s, a czekanie
+    # na sztywno kosztowało cztery sekundy przy każdym przełączeniu.
+    # czekaj_na_dane sprawdza w pętli i wraca, gdy tylko cena się zgodzi.
     w = czekaj_na_dane(symbol, min(sekund / 3, 8))
     p_ok = True
     p_info = {}

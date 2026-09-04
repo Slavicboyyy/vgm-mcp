@@ -148,6 +148,15 @@ async def lista_narzedzi() -> list[Tool]:
             "pola": L, **ile}, ["rynek", "warunki"]),
 
         # ── wykres: wymaga otwartej przeglądarki ────────────────────────
+        Tool(name="vgm_wykres_karta",
+             description=("Otwiera kartę z wykresem, gdy żadna nie jest otwarta. "
+                          "Karta potrafi zniknąć: ktoś ją zamknie, przeglądarka ubije "
+                          "ją przy przeciążeniu. Bez niej wszystkie narzędzia wykresu "
+                          "przestają działać, choć nic nie jest zepsute. "
+                          "Nic nie robi, gdy karta już jest."),
+             inputSchema={"type": "object",
+                          "properties": {"symbol": dict(S, default="FX:EURUSD")}}),
+
         Tool(name="vgm_wykres_zdrowie",
              description=("Czy da się sterować wykresem: czy przeglądarka odpowiada, "
                           "czy jest karta z TradingView, czy strona udostępnia API. "
@@ -466,6 +475,8 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
             import wykres  # dopiero tutaj — reszta działa bez websocket-client
 
             try:
+                if nazwa == "vgm_wykres_karta":
+                    return ok(wykres.zapewnij_karte(a.get("symbol", "FX:EURUSD")))
                 if nazwa == "vgm_wykres_zdrowie":
                     return ok(wykres.zdrowie())
                 if nazwa == "vgm_wykres_stan":
