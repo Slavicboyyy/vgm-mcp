@@ -166,6 +166,29 @@ async def lista_narzedzi() -> list[Tool]:
                           "To główny powód, dla którego warstwa przeglądarki istnieje."),
              inputSchema={"type": "object", "properties": {}}),
 
+        Tool(name="vgm_wykres_przelacz",
+             description=("Zmienia instrument i CZEKA, aż świece naprawdę do niego należą. "
+                          "UŻYWAJ TEGO zamiast vgm_wykres_symbol, gdy zaraz potem czytasz "
+                          "świece albo liczysz statystykę. Zmierzone: sama zmiana symbolu "
+                          "potrafi zostawić świece poprzedniego instrumentu, a nic tego nie "
+                          "sygnalizuje. To narzędzie sprawdza je krzyżowo z ceną z publicznego "
+                          "punktu i w razie potrzeby przeładowuje stronę."),
+             inputSchema={"type": "object",
+                          "properties": {"symbol": S, "interwal": S},
+                          "required": ["symbol"]}),
+
+        Tool(name="vgm_przeglad_instrumentow",
+             description=("Ten sam przegląd wskaźników na kilku instrumentach i przedziałach. "
+                          "Wynik z jednego wykresu to jeden pomiar — dopiero powtórzenie "
+                          "pokazuje, czy wniosek się utrzymuje. Przełącza z weryfikacją "
+                          "danych i przywraca stan wyjściowy."),
+             inputSchema={"type": "object",
+                          "properties": {
+                              "instrumenty": {"type": "array",
+                                              "items": {"type": "array",
+                                                        "items": {"type": "string"}}},
+                              "po_ilu": {"type": "integer", "default": 10}}}),
+
         Tool(name="vgm_wykres_symbol",
              description="Zmienia instrument na wykresie, np. FX:EURUSD, NASDAQ:NVDA.",
              inputSchema={"type": "object",
@@ -388,6 +411,14 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                     return ok(wykres.stan())
                 if nazwa == "vgm_wykres_wartosci":
                     return ok(wykres.wartosci())
+                if nazwa == "vgm_wykres_przelacz":
+                    return ok(wykres.przelacz(a["symbol"], a.get("interwal")))
+                if nazwa == "vgm_przeglad_instrumentow":
+                    import pomiar
+                    inst = a.get("instrumenty")
+                    if inst:
+                        inst = [tuple(x) for x in inst]
+                    return ok(pomiar.przeglad_instrumentow(inst, a.get("po_ilu", 10)))
                 if nazwa == "vgm_wykres_symbol":
                     return ok(wykres.ustaw_symbol(a["symbol"]))
                 if nazwa == "vgm_wykres_interwal":

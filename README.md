@@ -2,7 +2,7 @@
 
 Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki.
 
-Trzydzieści siedem narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
+Trzydzieści dziewięć narzędzi plus polecenie w terminalu. Dziewięćdziesiąt jeden pól danych. Sześć przedziałów czasowych
 naraz, jednym zapytaniem.
 
 Większość działa bez logowania i bez przeglądarki. Reszta steruje otwartą kartą
@@ -72,6 +72,7 @@ Ta grupa wymaga otwartej karty z TradingView. Port podajesz w `VGM_CDP_PORT`.
 | `vgm_wykres_zdrowie` | czy da się sterować, sprawdź przed resztą | karta z wykresem |
 | `vgm_wykres_stan` | instrument, przedział, typ, wskaźniki, rysunki | BATS:AAPL, FX:GBPUSD |
 | `vgm_wykres_wartosci` | bieżące wartości wskaźników z wykresu | RSI 53,16 i Volume |
+| `vgm_wykres_przelacz` | zmiana instrumentu Z WERYFIKACJĄ danych | EURUSD i złoto, ceny zgodne |
 | `vgm_wykres_symbol` | zmiana instrumentu | AAPL na EURUSD, potwierdzone odczytem |
 | `vgm_wykres_interwal` | zmiana przedziału czasu | D na 60, potwierdzone odczytem |
 | `vgm_wykres_typ` | świece, słupki, linia, Heikin Ashi | wywołanie przechodzi |
@@ -150,6 +151,27 @@ ADX powyżej 30:   -0,0260%   40,1% trafień   137 wejść, zwrot ujemny
 Dwa pierwsze wyglądają świetnie i oba odpadają na liczbie wejść. Trzeci ma dość
 wejść, ale traci po spreadzie. Narzędzie mówi to wprost, zamiast wybierać
 najładniejszy wiersz.
+
+### Pierwszy warunek, który przeszedł
+
+Po naprawie pułapki opisanej wyżej pomiar na trzech instrumentach dał
+pierwszy wynik pozytywny:
+
+```
+COMEX:GC1! 1h    Bollinger powyżej 90:  +0,3421%   34 wejścia
+                 RSI powyżej 70 i ADX powyżej 30 też przeszły
+
+FX:EURUSD 1h     nic nie przeszło
+COINBASE:BTCUSD  nic nie przeszło (ADX < 15 dał 2,82%, ale 17 wejść)
+```
+
+To jeden pomiar na trzystu świecach, więc nie dowodzi przewagi.
+Za to pierwszy warunek, który przeszedł wszystkie cztery bariery,
+przeszedł wszystkie cztery bariery i jest pierwszym kandydatem wartym
+sprawdzenia na dłuższej historii.
+
+Przed naprawą ten sam przebieg pokazywał identyczne liczby dla wszystkich
+instrumentów, bo cztery razy liczył te same świece.
 ---
 
 ## Dane, do których sięga
@@ -281,7 +303,7 @@ Lista jawna. Lepiej wiedzieć z góry, niż odkryć w trakcie.
 | rysowanie na wykresie | sprawdzone: wywołanie przechodzi, ale nic się nie pojawia bez sesji |
 | Strategy Tester | wyniki są i tak tylko poglądowe, więc niski priorytet |
 
-Warstwa wykresu działa bez logowania w zakresie odczytu i sterowania, natomiast zapisywanie
+Warstwa wykresu działa bez logowania, gdy chodzi o odczyt i sterowanie. Zapisywanie
 skryptów, alerty i listy obserwowanych wymagają zalogowanej sesji.
 
 Te rzeczy są zaplanowane, ale żadnej nie ma w kodzie. Nie chcę, żeby ktoś liczył
@@ -290,6 +312,20 @@ na coś, czego nie zbudowałem.
 ---
 
 ## Co trzeba wiedzieć, zanim się użyje
+
+🔴 **Pułapka, na którą trzeba uważać.** Zmiana instrumentu przez
+`vgm_wykres_symbol` zmienia nazwę natychmiast, ale seria świec potrafi
+zostać przy poprzednim instrumencie. Wykres pokazuje wtedy jedną nazwę,
+a zwraca ceny innego waloru, przy czym nic tego nie sygnalizuje.
+
+Zmierzone: po przełączeniu na bitcoina wykres deklarował `COINBASE:BTCUSD`,
+a ostatnia świeca miała 1,35206, czyli cenę funta. Statystyka policzona na
+takich danych jest bezwartościowa i wygląda dokładnie tak samo jak prawdziwa.
+
+Dlatego przed czytaniem świec używaj `vgm_wykres_przelacz`. Sprawdza
+on cenę krzyżowo z publicznym punktem TradingView i, gdy trzeba, przeładowuje
+stronę z symbolem wpisanym w adres.
+
 
 **To nie są ceny brokera.** Dane idą z publicznego punktu TradingView i są liczone
 po ich stronie. Twój broker pokaże inną cenę i inny spread. Do handlu bierz jego.

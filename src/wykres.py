@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import urllib.parse
 import urllib.request
 
 try:
@@ -350,6 +351,104 @@ def usun_wskaznik(identyfikator: str) -> dict:
         }}
         return {{blad: 'nie ma wskaźnika o takim identyfikatorze'}};
     """)))
+
+
+def czekaj_na_dane(symbol: str, sekund: float = 25, tolerancja: float = 0.05) -> dict:
+    """Czeka, aż świece na wykresie naprawdę należą do podanego instrumentu.
+
+    Zmierzone zachowanie TradingView: po zmianie symbolu `ch.symbol()` i nazwa
+    serii zmieniają się natychmiast, ale świece przez chwilę pozostają stare.
+    `dataReady` i `whenChartReady` wracają od razu i tego nie wychwytują.
+
+    Dlatego sprawdzamy inaczej: pobieramy cenę z publicznego punktu TradingView
+    i czekamy, aż ostatnia świeca się z nią zgodzi. To porównanie krzyżowe,
+    niezależne od tego, co mówi sama strona.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+
+    _sys.path.insert(0, str(_Path(__file__).resolve().parent))
+    import dane as _dane
+
+    try:
+        odn = _dane.odczyt(symbol, ["close"]).get("close")
+    except Exception as e:
+        return {"potwierdzone": False, "powod": f"brak ceny odniesienia: {e}"}
+
+    if not odn:
+        return {"potwierdzone": False, "powod": "punkt publiczny nie zwrócił ceny"}
+
+    koniec = time.time() + sekund
+    ostatnia = None
+    while time.time() < koniec:
+        try:
+            w = swiece(2)
+            if w.get("swiece"):
+                ostatnia = w["swiece"][-1]["zamkniecie"]
+                if ostatnia and abs(ostatnia - odn) / odn <= tolerancja:
+                    return {"potwierdzone": True, "cena_wykresu": ostatnia,
+                            "cena_odniesienia": odn}
+        except BladWykresu:
+            pass
+        time.sleep(1.5)
+
+    return {"potwierdzone": False,
+            "powod": f"po {sekund}s świece nadal nie pasują do instrumentu",
+            "cena_wykresu": ostatnia, "cena_odniesienia": odn}
+
+
+def _przejdz(url: str):
+    """Przeładowuje kartę pod wskazany adres."""
+    k = _karta()
+    _licznik[0] += 1
+    nr = _licznik[0]
+    ws = websocket.create_connection(k["webSocketDebuggerUrl"], timeout=30)
+    try:
+        ws.send(json.dumps({"id": nr, "method": "Page.navigate",
+                            "params": {"url": url}}))
+        koniec = time.time() + 20
+        while time.time() < koniec:
+            o = json.loads(ws.recv())
+            if o.get("id") == nr:
+                return
+    finally:
+        ws.close()
+
+
+def przelacz(symbol: str, interwal: str | None = None, sekund: float = 30) -> dict:
+    """Zmienia instrument i CZEKA na jego prawdziwe dane.
+
+    Używaj tego zamiast samego `ustaw_symbol`, gdy zaraz potem czytasz świece.
+
+    Zmierzone zachowanie TradingView: `setSymbol` zmienia nazwę instrumentu
+    natychmiast, ale seria świec potrafi zostać przy poprzednim. Wykres pokazuje
+    wtedy jedną nazwę, a zwraca ceny innego instrumentu — statystyka policzona
+    na takich danych jest bezwartościowa, a nic tego nie sygnalizuje.
+
+    Dlatego najpierw próbujemy normalnej zmiany, sprawdzamy krzyżowo z ceną
+    z publicznego punktu, a gdy się nie zgadza, przeładowujemy stronę z symbolem
+    w adresie. To zawsze daje właściwe dane, tylko trwa dłużej.
+    """
+    ustaw_symbol(symbol)
+    time.sleep(2)
+    if interwal:
+        ustaw_interwal(interwal)
+        time.sleep(2)
+
+    w = czekaj_na_dane(symbol, min(sekund / 3, 8))
+    if w.get("potwierdzone"):
+        return {"symbol": symbol, "interwal": interwal, "sposob": "zmiana na miejscu", **w}
+
+    # dane nie nadążyły — przeładowanie z symbolem w adresie
+    adres = f"https://www.tradingview.com/chart/?symbol={urllib.parse.quote(symbol)}"
+    if interwal:
+        adres += f"&interval={urllib.parse.quote(str(interwal))}"
+    _przejdz(adres)
+    time.sleep(12)
+
+    w2 = czekaj_na_dane(symbol, sekund)
+    return {"symbol": symbol, "interwal": interwal,
+            "sposob": "przeładowanie strony", **w2}
 
 
 def _demo():

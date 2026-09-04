@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import random
 import statistics
+import time
 import sys
 from pathlib import Path
 
@@ -423,6 +424,79 @@ def przeglad_wskaznikow(po_ilu: int = 10, ile_swiec: int = 300,
                     if przeszly else
                     "żaden z siedmiu warunków nie dał przewagi na tych danych"),
     }
+
+
+def przeglad_instrumentow(instrumenty: list | None = None,
+                          po_ilu: int = 10, spread_proc: float = 0.02) -> dict:
+    """Ten sam przegląd na kilku instrumentach i przedziałach.
+
+    Wynik z jednego wykresu to jeden pomiar. Dopiero powtórzenie na innym
+    instrumencie pokazuje, czy wniosek się utrzymuje, czy był przypadkiem.
+
+    Każda pozycja to para (symbol, przedział). Wykres jest przełączany
+    i przywracany na koniec.
+    """
+    import wykres
+
+    instrumenty = instrumenty or [
+        ("FX:EURUSD", "60"),
+        ("FX:EURUSD", "D"),
+        ("COMEX:GC1!", "60"),
+        ("COINBASE:BTCUSD", "60"),
+    ]
+
+    stan_poczatkowy = wykres.stan()
+    wyniki = {}
+
+    for symbol, przedzial in instrumenty:
+        klucz = f"{symbol} {przedzial}"
+        try:
+            # przelacz sprawdza krzyzowo, czy swiece naprawde naleza do instrumentu
+            p = wykres.przelacz(symbol, przedzial)
+            if not p.get("potwierdzone"):
+                wyniki[klucz] = {
+                    "pominiete": "świece nie potwierdziły instrumentu",
+                    "szczegol": p.get("powod", "")[:70],
+                }
+                continue
+            w = przeglad_wskaznikow(po_ilu, 300, spread_proc)
+            wyniki[klucz] = {
+                "sprawdzono": w["sprawdzono"],
+                "przeszly": w["przeszly"],
+                "najlepszy": _najlepszy(w["wyniki"]),
+            }
+        except Exception as e:
+            wyniki[klucz] = {"blad": str(e)[:80]}
+
+    try:
+        wykres.przelacz(stan_poczatkowy["symbol"], stan_poczatkowy["interwal"])
+    except Exception:
+        pass
+
+    wszystkie_przeszly = [w for r in wyniki.values() for w in r.get("przeszly", [])]
+
+    return {
+        "instrumentow": len(instrumenty),
+        "stan_przywrocony": f"{stan_poczatkowy['symbol']} {stan_poczatkowy['interwal']}",
+        "wyniki": wyniki,
+        "warunki_ktore_przeszly_gdziekolwiek": sorted(set(wszystkie_przeszly)),
+        "wniosek": (
+            f"warunki z przewagą na przynajmniej jednym instrumencie: "
+            f"{sorted(set(wszystkie_przeszly))}"
+            if wszystkie_przeszly else
+            f"na {len(instrumenty)} instrumentach żaden warunek nie dał przewagi"
+        ),
+    }
+
+
+def _najlepszy(wiersze: list) -> dict | None:
+    """Wiersz z najwyższym zwrotem — nawet gdy nie przeszedł, warto go widzieć."""
+    z_wynikiem = [w for w in wiersze if w.get("zwrot_proc") is not None]
+    if not z_wynikiem:
+        return None
+    n = max(z_wynikiem, key=lambda w: w["zwrot_proc"])
+    return {"warunek": n["warunek"], "zwrot_proc": n["zwrot_proc"],
+            "wejsc": n["wejsc"], "trafien_proc": n["trafien_proc"]}
 
 
 def _demo():
