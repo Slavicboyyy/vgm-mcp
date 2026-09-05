@@ -177,7 +177,11 @@ połowach może być wspólny dla całego rynku, przewaga nad losowym wejściem 
 
 **Przewaga większa niż rozrzut placebo.** Losowań jest pięćdziesiąt, z jawnym
 ziarnem. Narzędzie liczy ich odchylenie i z-score prawdziwego wyniku. Poniżej
-jednego odchylenia to szum, nawet gdy liczba wygląda dobrze.
+jednego odchylenia to szum, nawet gdy liczba wygląda dobrze. Losowe wejścia
+biorą się tylko ze świec o zmienności z tych samych kwintyli, w których wypadły
+świece sygnału: warunek „ATR powyżej progu" trafia w burzliwe świece i wobec
+spokojnych wyglądałby raz lepiej, raz gorzej niż jest. Na złocie zmieniało to
+z-score z −1,55 na 0,19 w jedną stronę i z 0,06 na −0,70 w drugą.
 
 Pomiar bierze domyślnie całą historię, jaką wykres ma wczytaną. Świeże
 przełączenie symbolu daje około 400 świec i nic tego nie doczytuje: ani

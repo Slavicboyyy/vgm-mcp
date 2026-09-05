@@ -65,33 +65,69 @@ def _wynik_po(swiece: list, wejscia: list[int], po_ilu: int,
     }
 
 
-def _placebo_dla(swiece, wejscia, od, do, po_ilu, spread_proc, rng, losowan):
+def _losuj_probe(swiece, wejscia, od, do, rng, kw=None):
+    """Losowa próba wejść o tej samej liczności co `wejscia`, z zakresu [od, do).
+
+    Z `kw` (kwintyle zmienności) losuje z tych samych kwintyli i w tych samych
+    proporcjach, w jakich wypadły świece sygnału. Gdy w którymś kwintylu brakuje
+    świec, wraca do zwykłego losowania i mówi o tym drugą wartością.
+    """
+    pula = list(range(max(od, 25), max(od + 1, do)))
+    n = min(len(wejscia), max(1, len(pula) - 1))
+    if kw:
+        wg_kw, potrzeba = {}, {}
+        for i in pula:
+            if kw[i] is not None:
+                wg_kw.setdefault(kw[i], []).append(i)
+        for i in wejscia:
+            if kw[i] is not None:
+                potrzeba[kw[i]] = potrzeba.get(kw[i], 0) + 1
+        if potrzeba and all(len(wg_kw.get(k, [])) > c for k, c in potrzeba.items()):
+            return [j for k, c in potrzeba.items() for j in rng.sample(wg_kw[k], c)], True
+    return rng.sample(pula, n), False
+
+
+def _kwintyle_zmiennosci(swiece):
+    """Numer kwintyla ATR_proc (0-4) dla każdej świecy; None bez wartości."""
+    atr = _policz("ATR_proc", swiece)
+    znane = sorted(v for v in atr if v is not None)
+    if len(znane) < 25:
+        return [None] * len(swiece)
+    progi = [znane[int(len(znane) * q / 5)] for q in (1, 2, 3, 4)]
+    return [None if v is None else sum(1 for pr in progi if v >= pr) for v in atr]
+
+
+def _placebo_dla(swiece, wejscia, od, do, po_ilu, spread_proc, rng, losowan,
+                 blokowe=True):
     """Placebo, odchylenie i z-score dla wejść ograniczonych do zakresu świec.
 
     Używane osobno dla każdej połowy okresu. Zgodność ZNAKU PRZEWAGI w obu
     połowach mówi o trwałości sygnału; zgodność samego zysku mówi tylko o tym,
     że rynek rósł w obu — a to nie to samo.
+
+    `blokowe`: placebo losowane tylko ze świec o zmienności (ATR_proc) z tych
+    samych kwintyli, w których wypadły świece sygnału — w tych samych
+    proporcjach. Bez tego placebo jest łatwiejsze niż sygnał: warunek
+    „ATR powyżej progu" z definicji trafia w burzliwe świece, a losowanie
+    z całej historii porównuje go ze spokojnymi. Ostatnia uwaga z przeglądu.
     """
     w = _wynik_po(swiece, wejscia, po_ilu, spread_proc)
     if not w.get("wejsc"):
         return {"wejsc": 0}
-    pula = range(max(od, 25), max(od + 1, do - po_ilu - 1))
-    n = min(len(wejscia), max(1, len(pula) - 1))
-    losowe = []
+    kw = _kwintyle_zmiennosci(swiece) if blokowe else None
+    losowe, blokowo = [], False
     for _ in range(losowan):
-        if len(pula) <= 1:
-            break
-        prob = rng.sample(pula, n)
+        prob, blokowo = _losuj_probe(swiece, wejscia, od, do - po_ilu - 1, rng, kw)
         r = _wynik_po(swiece, prob, po_ilu, spread_proc)
         if r.get("wejsc"):
             losowe.append(r["sredni_zwrot_proc"])
     if len(losowe) < 2:
-        return {**w, "placebo": None, "przewaga": None, "z": None}
+        return {**w, "placebo": None, "przewaga": None, "z": None, "placebo_blokowe": blokowo}
     sr = statistics.mean(losowe)
     od_ = statistics.pstdev(losowe)
     prz = round(w["sredni_zwrot_proc"] - sr, 4)
     return {**w, "placebo": round(sr, 4), "przewaga": prz,
-            "z": round(prz / od_, 2) if od_ else None}
+            "z": round(prz / od_, 2) if od_ else None, "placebo_blokowe": blokowo}
 
 
 def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
@@ -138,10 +174,10 @@ def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
     # placebo: tyle samo wejść, ale w losowych miejscach
     # seed jawny: bez niego dwa uruchomienia dawały różne placebo i różne wnioski
     rng = random.Random(seed)
-    losowe = []
+    kw = _kwintyle_zmiennosci(swiece)
+    losowe, blokowo = [], False
     for _ in range(losowan):
-        prob = rng.sample(range(15, len(swiece) - po_ilu),
-                             min(len(wejscia), len(swiece) - po_ilu - 16))
+        prob, blokowo = _losuj_probe(swiece, wejscia, 15, len(swiece) - po_ilu, rng, kw)
         w = _wynik_po(swiece, prob, po_ilu, spread_proc)
         if w.get("wejsc"):
             losowe.append(w["sredni_zwrot_proc"])
@@ -172,6 +208,7 @@ def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
         "druga_polowa": druga,
         "placebo_sredni_zwrot": placebo,
         "placebo_odchylenie": odch_placebo,
+        "placebo_blokowe": blokowo,
         "przewaga_nad_placebo": przewaga,
         "z_score": z,
         "percentyl_wobec_placebo": percentyl,
@@ -452,10 +489,10 @@ def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
 
     # seed jawny: bez niego dwa uruchomienia dawały różne placebo i różne wnioski
     rng = random.Random(seed)
-    losowe = []
+    kw = _kwintyle_zmiennosci(swiece)
+    losowe, blokowo = [], False
     for _ in range(losowan):
-        prob = rng.sample(range(od, len(swiece) - po_ilu),
-                             min(len(wejscia), len(swiece) - po_ilu - od - 1))
+        prob, blokowo = _losuj_probe(swiece, wejscia, od, len(swiece) - po_ilu, rng, kw)
         w = _wynik_po(swiece, prob, po_ilu, spread_proc)
         if w.get("wejsc"):
             losowe.append(w["sredni_zwrot_proc"])
@@ -489,6 +526,7 @@ def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
         "druga_polowa": druga,
         "placebo_sredni_zwrot": placebo,
         "placebo_odchylenie": odch_placebo,
+        "placebo_blokowe": blokowo,
         "przewaga_nad_placebo": przewaga,
         "z_score": z,
         "percentyl_wobec_placebo": percentyl,

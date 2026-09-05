@@ -318,3 +318,34 @@ Ograniczenie zmierzone przy okazji: świeże przełączenie symbolu daje około
 otwarcie testera. Pełne 2518 z wcześniejszych pomiarów pojawiło się tylko przy
 strategii z głębokim testem na wykresie. Na 400 świecach dziennych walk-forward
 daje 10–20 wejść w teście, czyli tyle, żeby odrzucić, nie żeby potwierdzić.
+
+---
+
+## Placebo blokowe: losowe wejście musi być tak samo trudne jak sygnał
+
+Ostatnia uwaga z przeglądu GLM. Warunek „ATR powyżej progu" z definicji trafia
+w burzliwe świece. Placebo losowane z całej historii porównuje go ze spokojnymi,
+które na złocie miały inny zwrot. To nie jest uczciwe porównanie w żadną stronę.
+
+Teraz każda świeca dostaje kwintyl zmienności (ATR jako procent ceny), a placebo
+losuje tylko ze świec z tych samych kwintyli, w których wypadły świece sygnału,
+w tych samych proporcjach. Gdy w którymś kwintylu brakuje świec, narzędzie wraca
+do zwykłego losowania i mówi o tym polem `placebo_blokowe`.
+
+Złoto dzienne, 402 świece, wyjście po 5, progi z 70. percentyla:
+
+```
+warunek                 wejść   zwykłe placebo   z      blokowe placebo   z      kwintyle sygnału
+ATR powyżej 2,37 %        27        0,775      −1,55       −0,572       0,19    3 i 4 (burzliwe)
+ADX powyżej 29,6          24        0,741       0,11        0,709       0,14    wszystkie
+Bollinger powyżej 87      23        0,807       0,06        1,332      −0,70    0–3 (spokojne)
+RSI powyżej 66,2          20        0,839       0,28        0,967       0,15    0–3
+```
+
+Zmienia wnioski w obie strony. ATR ze zwykłym placebo wyglądał na gorszy niż
+losowe wejście (z −1,55); wobec równie burzliwych świec to szum (0,19). Bollinger
+odwrotnie: ze zwykłym placebo szum (0,06), wobec równie spokojnych świec gorszy
+niż losowe (−0,70), bo spokojne świece na złocie same z siebie dawały 1,33%.
+
+Wszystkie trzy warstwy pomiaru (całość, połowy, walk-forward) losują teraz
+z tego samego mechanizmu. Na tym lista uwag z przeglądu jest pusta.
