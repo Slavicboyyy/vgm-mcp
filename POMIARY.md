@@ -284,3 +284,37 @@ Całość: z-score 0,01, czyli szum. Ale nawet gdyby całość przeszła, połow
 przeczą sobie znakiem przewagi. Sygnał, który w jednej połowie bije placebo,
 a w drugiej przegrywa, nie jest sygnałem, tylko przypadkowym dopasowaniem
 do jednego okresu.
+
+---
+
+## Walk-forward: pierwszy pomiar poza próbą
+
+Wszystko powyżej mierzy w próbie: próg i wynik pochodzą z tych samych świec,
+więc najlepszy próg zawsze wygląda dobrze. `vgm_walk_forward` dzieli historię:
+próg wybierany na pierwszych 70% (najwyższy z-score wobec placebo), sprawdzany
+na ostatnich 30%, których wybór nie widział.
+
+Progi nie są sztywne, tylko z percentyli wskaźnika na części uczącej. Sztywne
+0,05–0,3 dla ATR łapały każdą świecę złota (dzienny ATR to około 1%), a RSI
+poniżej 40 w hossie nie wystąpił ani razu. Percentyle pasują do każdego
+instrumentu, a część testowa ich nie widzi.
+
+Złoto dzienne, 402 świece (281 uczenie, 121 test), wyjście po 5 świecach:
+
+```
+wskaźnik          wybrany próg   z na uczeniu   z poza próbą   wejść w teście
+RSI poniżej            51,87          2,24          −0,44             17
+ATR powyżej             1,90 %        0,16          −0,37             20
+ADX powyżej            23,61          0,03           1,54             14
+```
+
+RSI to podręcznikowy przypadek: z 2,24 na uczeniu wyglądałoby na sygnał,
+poza próbą −0,44. Wybór progu dopasował się do przeszłości. ADX ma odwrotnie:
+szum na uczeniu, więc wybór był przypadkowy i to, że poza próbą wyszło 1,54,
+nic nie znaczy — narzędzie wymaga obu z-score powyżej jedności.
+
+Ograniczenie zmierzone przy okazji: świeże przełączenie symbolu daje około
+400 świec i nic tego nie doczytuje — ani przewijanie, ani zakres widoku, ani
+otwarcie testera. Pełne 2518 z wcześniejszych pomiarów pojawiło się tylko przy
+strategii z głębokim testem na wykresie. Na 400 świecach dziennych walk-forward
+daje 10–20 wejść w teście, czyli tyle, żeby odrzucić, nie żeby potwierdzić.

@@ -5,7 +5,7 @@ a przy tym potrafi sprawdzić, czy sygnał jest cokolwiek wart.
 
 ![vgm w terminalu](obrazy/terminal.png)
 
-Pięćdziesiąt trzy narzędzia, dziewięćdziesiąt jeden pól danych, dziesięć rynków.
+Pięćdziesiąt cztery narzędzia, dziewięćdziesiąt jeden pól danych, dziesięć rynków.
 
 ---
 
@@ -153,6 +153,7 @@ Ta grupa nie liczy sygnału. Sprawdza, czy sygnał jest cokolwiek wart.
 |---|---|---|
 | `vgm_zmierz_prog` | czy przekroczenie progu cokolwiek zapowiada | RSI 30, 300 świec |
 | `vgm_porownaj_progi` | ten sam pomiar na kilku progach naraz | pięć progów RSI |
+| `vgm_walk_forward` | próg wybrany na 70% historii, sprawdzony na 30% — jedyny pomiar poza próbą; progi z percentyli wskaźnika | złoto dzienne: RSI z 2,24 na uczeniu, −0,44 poza próbą |
 | `vgm_zmierz` | to samo dla czterech wskaźników | RSI, Bollinger, ADX, ATR |
 | `vgm_przeglad_wskaznikow` | siedem warunków jednym przebiegiem | GBPUSD 1h, 300 świec |
 | `vgm_sygnal_czy_trend` | czy warunek wnosi coś ponad sam trend | złoto, ropa, srebro |
@@ -178,8 +179,11 @@ połowach może być wspólny dla całego rynku, przewaga nad losowym wejściem 
 ziarnem. Narzędzie liczy ich odchylenie i z-score prawdziwego wyniku. Poniżej
 jednego odchylenia to szum, nawet gdy liczba wygląda dobrze.
 
-Pomiar bierze domyślnie całą historię, jaką wykres ma wczytaną. Na złocie dziennym
-to 2518 świec, czyli dziesięć lat. Na trzystu świecach jeden warunek wyglądał na
+Pomiar bierze domyślnie całą historię, jaką wykres ma wczytaną. Świeże
+przełączenie symbolu daje około 400 świec i nic tego nie doczytuje: ani
+przewijanie, ani zakres widoku, ani otwarcie testera (sprawdzone). Pełne 2518
+świec na złocie dziennym pojawiło się tylko przy strategii z głębokim testem
+na wykresie. Na trzystu świecach jeden warunek wyglądał na
 sygnał; na dziesięciu latach ma z-score −0,69 i wypada gorzej niż losowe wejście.
 
 Przegląd siedmiu warunków na czterech wskaźnikach dał wynik odmowny w całości:

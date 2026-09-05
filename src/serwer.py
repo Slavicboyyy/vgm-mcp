@@ -265,6 +265,26 @@ async def lista_narzedzi() -> list[Tool]:
                               "ile_swiec": {"type": "integer", "default": 0, "description": "0 = cała wczytana historia"},
                               "spread_proc": {"type": "number", "default": 0.02}}}),
 
+        Tool(name="vgm_walk_forward",
+             description=("Jedyny pomiar poza próbą. Próg wybierany na pierwszych 70% "
+                          "świec (najwyższy z-score wobec placebo), sprawdzany na "
+                          "ostatnich 30%, których wybór nie widział. Wszystko inne tu "
+                          "mierzy w próbie, więc najlepszy próg zawsze wygląda dobrze. "
+                          "Zwraca wynik każdego progu na uczeniu, wybrany próg i jego "
+                          "przewagę, z-score i liczbę wejść poza próbą. Wymaga co najmniej "
+                          "200 świec; sensownie od tysiąca. Świeże przełączenie symbolu "
+                          "daje około 400 — pełna historia pojawia się tylko przy strategii "
+                          "z głębokim testem na wykresie."),
+             inputSchema={"type": "object",
+                          "properties": {"wskaznik": dict(S, description="RSI, Bollinger, ADX, ATR_proc"),
+                                         "kierunek": dict(S, description="ponizej albo powyzej"),
+                                         "progi": {"type": "array", "items": {"type": "number"},
+                                                   "description": "Pominięte = zestaw domyślny dla wskaźnika"},
+                                         "po_ilu": {"type": "integer", "default": 10},
+                                         "czesc_ucz": {"type": "number", "default": 0.7},
+                                         "spread_proc": {"type": "number", "default": 0.0}},
+                          "required": ["wskaznik"]}),
+
         Tool(name="vgm_zmierz",
              description=("To samo co vgm_zmierz_prog, ale dla dowolnego z czterech "
                           "wskaźników liczonych na świecach: RSI, Bollinger (położenie "
@@ -534,7 +554,7 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                              "vgm_przeglad_",          # wskaznikow ORAZ instrumentow
                              "vgm_sygnal_czy_trend",
                              "vgm_odniesienie_trzymanie", "vgm_jak_dlugo_trzymac",
-                             "vgm_koszt_a_przewaga")):
+                             "vgm_koszt_a_przewaga", "vgm_walk_forward")):
             import wykres  # dopiero tutaj — reszta działa bez websocket-client
 
             try:
@@ -574,6 +594,12 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                         "RSI", a.get("prog", 30), a.get("kierunek", "ponizej"),
                         a.get("po_ilu", 10), a.get("ile_swiec", 0),
                         a.get("spread_proc", 0.02)))
+                if nazwa == "vgm_walk_forward":
+                    import pomiar
+                    return ok(pomiar.walk_forward(
+                        a.get("wskaznik", "RSI"), a.get("kierunek", "ponizej"), a.get("progi"),
+                        a.get("po_ilu", 10), a.get("ile_swiec", 0), a.get("czesc_ucz", 0.7),
+                        a.get("spread_proc", 0.0)))
                 if nazwa == "vgm_zmierz":
                     import pomiar
                     return ok(pomiar.zmierz(

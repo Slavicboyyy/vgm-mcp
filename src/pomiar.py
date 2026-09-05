@@ -846,5 +846,99 @@ def _demo():
             print(f"  {k:24} {v}")
 
 
+def _wejscia_dla(wartosci, prog, kierunek, od, do, po_ilu):
+    """Epizody bez nakładania w zakresie [od, do)."""
+    wejscia, wolne_od = [], 0
+    for i in range(max(od, 25), min(do, len(wartosci)) - po_ilu - 1):
+        w = wartosci[i]
+        if w is None:
+            continue
+        if (kierunek == "ponizej" and w < prog) or (kierunek == "powyzej" and w > prog):
+            if i >= wolne_od:
+                wejscia.append(i)
+                wolne_od = i + 1 + po_ilu
+    return wejscia
+
+
+def walk_forward(wskaznik: str = "RSI", kierunek: str = "ponizej",
+                 progi: list | None = None, po_ilu: int = 10,
+                 ile_swiec: int = 0, czesc_ucz: float = 0.7,
+                 spread_proc: float = 0.0, losowan: int = 50, seed: int = 42,
+                 swiece: list | None = None) -> dict:
+    """Jedyny pomiar poza próbą: próg wybrany na części uczącej, sprawdzony na testowej.
+
+    Wszystko wcześniej mierzyło w próbie — próg i wynik z tych samych świec,
+    więc najlepszy próg zawsze wyglądał dobrze. Tu: pierwsze `czesc_ucz` świec
+    służy do wyboru progu (najwyższy z-score wobec placebo), ostatnie do
+    sprawdzenia, czy ten próg trzyma się na danych, których wybór nie widział.
+
+    Wskaźnik liczony na całej serii (bez ucięcia rozgrzewki na granicy),
+    wejścia w części testowej tylko od granicy w górę. Placebo losowane
+    osobno w każdej części.
+
+    Ile świec da wykres: świeże przełączenie symbolu wczytuje około 400.
+    Pełna historia (zmierzone 2518 na złocie dziennym) pojawia się tylko,
+    gdy na wykresie jest strategia z włączonym głębokim testem — przewijanie,
+    setVisibleRange i scrollTo tego nie doczytują (sprawdzone trzema drogami).
+    `swiece` pozwala podać własną serię, np. zapisaną wcześniej do pliku.
+    """
+    import analiza
+    if swiece is None:
+        swiece = analiza._swiece_z_wykresu(ile_swiec)
+    if len(swiece) < 200:
+        raise BladPomiaru(f"za mało świec: {len(swiece)}, walk-forward wymaga co najmniej 200")
+    wartosci = _policz(wskaznik, swiece)
+    granica = int(len(swiece) * czesc_ucz)
+    if progi is None:
+        # Progi z percentyli wskaźnika na części uczącej, nie sztywne liczby:
+        # sztywne 0,05–0,3 dla ATR łapały każdą świecę złota (ATR dzienny ~1%),
+        # a RSI<40 w hossie nie wystąpiło ani razu. Percentyle pasują do
+        # każdego instrumentu i interwału, a część testowa ich nie widzi.
+        w_ucz = sorted(v for v in wartosci[:granica] if v is not None)
+        if len(w_ucz) < 20:
+            raise BladPomiaru("za mało wartości wskaźnika w części uczącej")
+        pc = [10, 20, 30, 40, 50] if kierunek == "ponizej" else [50, 60, 70, 80, 90]
+        progi = sorted({round(w_ucz[min(len(w_ucz) - 1, int(len(w_ucz) * q / 100))], 4) for q in pc})
+    rng = random.Random(seed)
+
+    ucz = []
+    for prog in progi:
+        we = _wejscia_dla(wartosci, prog, kierunek, 0, granica, po_ilu)
+        r = _placebo_dla(swiece, we, 0, granica, po_ilu, spread_proc, rng, losowan)
+        ucz.append({"prog": prog, "wejsc": r.get("wejsc", 0), "zwrot": r.get("sredni_zwrot_proc"),
+                    "przewaga": r.get("przewaga"), "z": r.get("z")})
+    z_wejsciami = [u for u in ucz if u["wejsc"] >= 8 and u["z"] is not None]
+    if not z_wejsciami:
+        return {"wskaznik": wskaznik, "kierunek": kierunek, "swiec": len(swiece),
+                "granica": granica, "uczenie": ucz,
+                "wniosek": "żaden próg nie dał ośmiu wejść w części uczącej — nie ma czego wybierać"}
+    najlepszy = max(z_wejsciami, key=lambda u: u["z"])
+
+    we_t = _wejscia_dla(wartosci, najlepszy["prog"], kierunek, granica, len(swiece), po_ilu)
+    test = _placebo_dla(swiece, we_t, granica, len(swiece), po_ilu, spread_proc, rng, losowan)
+    test_w = {"prog": najlepszy["prog"], "wejsc": test.get("wejsc", 0),
+              "zwrot": test.get("sredni_zwrot_proc"), "przewaga": test.get("przewaga"), "z": test.get("z")}
+
+    if test_w["wejsc"] < 8:
+        wn = (f"próg {najlepszy['prog']} wybrany na uczeniu (z {najlepszy['z']}), ale poza próbą "
+              f"tylko {test_w['wejsc']} wejść — za mało, żeby cokolwiek powiedzieć")
+    elif test_w["z"] is None:
+        wn = "placebo w części testowej nie dało się policzyć"
+    elif test_w["z"] >= 1 and najlepszy["z"] >= 1:
+        wn = (f"próg {najlepszy['prog']}: z {najlepszy['z']} na uczeniu, z {test_w['z']} poza próbą "
+              f"przy {test_w['wejsc']} wejściach — trzyma się poza próbą")
+    elif test_w["przewaga"] is not None and test_w["przewaga"] > 0:
+        wn = (f"próg {najlepszy['prog']}: z {najlepszy['z']} na uczeniu, {test_w['z']} poza próbą "
+              f"— przewaga dodatnia, ale w rozrzucie placebo")
+    else:
+        wn = (f"próg {najlepszy['prog']}: z {najlepszy['z']} na uczeniu, poza próbą {test_w['z']} "
+              f"— nie trzyma się; wybór progu dopasował się do przeszłości")
+
+    return {"wskaznik": wskaznik, "kierunek": kierunek, "po_ilu": po_ilu,
+            "swiec": len(swiece), "granica": granica, "czesc_ucz": czesc_ucz,
+            "uczenie": ucz, "wybrany_prog": najlepszy["prog"], "test": test_w,
+            "wniosek": wn}
+
+
 if __name__ == "__main__":
     _demo()
