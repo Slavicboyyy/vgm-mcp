@@ -5,7 +5,10 @@ Zasada: **w serwerze są wyłącznie narzędzia uruchomione na żywym rynku.**
 Nic „na zapas", nic „powinno działać". Czego nie sprawdziłem, tego tu nie ma —
 lista brakujących rzeczy stoi otwarcie w README.
 
-Wszystko działa bez logowania do TradingView i bez otwartej przeglądarki.
+Trzy warstwy o różnych wymaganiach:
+- dane, analiza, pomiar, sprawdzanie Pine — bez logowania i bez przeglądarki,
+- wykres — otwarta karta TradingView w przeglądarce z CDP,
+- sesja (alerty, listy obserwowanych, zapis Pine, tester) — zalogowane konto.
 """
 from __future__ import annotations
 
@@ -375,6 +378,48 @@ async def lista_narzedzi() -> list[Tool]:
                               "sciezka": dict(S, description="Gdzie zapisać. Pominięta = plik tymczasowy"),
                               "zamknij_okna": {"type": "boolean", "default": True}}}),
 
+        # ── sesja: wymaga zalogowania na TradingView ────────────────────
+        Tool(name="vgm_sesja",
+             description=("Czy w przeglądarce jest sesja TradingView i jaki plan konta. "
+                          "Sprawdza ciasteczko sessionid (HttpOnly, przez CDP) oraz obiekt "
+                          "użytkownika na stronie. Zmierzone: sam document.cookie nigdy go "
+                          "nie widzi, więc wcześniejsze sprawdzanie zawsze mówiło brak."),
+             inputSchema={"type": "object", "properties": {}}),
+        Tool(name="vgm_alerty",
+             description=("Wszystkie alerty cenowe z konta, przez HTTP z ciasteczkami sesji, "
+                          "bez klikania w stronę. Zmierzone: 208 alertów, symbol rozpakowany "
+                          "z formatu ={...} TradingView."),
+             inputSchema={"type": "object", "properties": {}}),
+        Tool(name="vgm_lista_obserwowanych",
+             description=("Instrumenty z listy obserwowanych otwartej w panelu wykresu. "
+                          "Zmierzone: 29 symboli z listy Forex. Wymaga otwartego panelu prawego."),
+             inputSchema={"type": "object", "properties": {}}),
+        Tool(name="vgm_skrypty_pine",
+             description="Skrypty Pine zapisane na koncie. Zmierzone: 59.",
+             inputSchema={"type": "object", "properties": {}}),
+        Tool(name="vgm_zrodlo_pine",
+             description="Kod źródłowy zapisanego skryptu po identyfikatorze z vgm_skrypty_pine.",
+             inputSchema={"type": "object", "properties": {"id": S}, "required": ["id"]}),
+        Tool(name="vgm_zapisz_pine",
+             description=("Zapisuje nowy skrypt Pine na koncie przez API strony. Zmierzone: "
+                          "lista rośnie o jeden, zwraca identyfikator. Sprawdź kod wcześniej "
+                          "przez vgm_pine_sprawdz."),
+             inputSchema={"type": "object", "properties": {"kod": S, "nazwa": S},
+                          "required": ["kod", "nazwa"]}),
+        Tool(name="vgm_usun_pine",
+             description="Usuwa zapisany skrypt po identyfikatorze. Nieodwracalne.",
+             inputSchema={"type": "object", "properties": {"id": S}, "required": ["id"]}),
+        Tool(name="vgm_strategie_wbudowane",
+             description="Wbudowane strategie TradingView z identyfikatorami. Zmierzone: 20 ze 145.",
+             inputSchema={"type": "object", "properties": {}}),
+        Tool(name="vgm_tester_raport",
+             description=("Otwiera Strategy Tester i czyta raport strategii z wykresu. "
+                          "Zwraca linie panelu i czy strategia zrobiła transakcje. "
+                          "Wymaga własnej strategii na wykresie — wbudowanych nie da się "
+                          "dodać przez createStudy (sprawdzone trzema nazwami). Wyniki są "
+                          "poglądowe: tester wypełnia na zamknięciu świecy."),
+             inputSchema={"type": "object", "properties": {}}),
+
         # ── Pine Script: bez przeglądarki ───────────────────────────────
         Tool(name="vgm_pine_sprawdz",
              description=("Kompiluje kod Pine w kompilatorze TradingView i zwraca błędy "
@@ -447,6 +492,24 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
         if nazwa == "vgm_skan":
             return ok(analiza.skan_wlasny(a["rynek"], a["warunki"],
                                           a.get("pola"), a.get("ile", 30)))
+        # ── sesja ───────────────────────────────────────────────────────
+        SESJA = {"vgm_sesja": lambda a: sesja.czy_zalogowany(),
+                 "vgm_alerty": lambda a: sesja.alerty(),
+                 "vgm_lista_obserwowanych": lambda a: sesja.lista_obserwowanych(),
+                 "vgm_skrypty_pine": lambda a: sesja.skrypty_pine(),
+                 "vgm_zrodlo_pine": lambda a: sesja.zrodlo_pine(a["id"]),
+                 "vgm_zapisz_pine": lambda a: sesja.zapisz_pine(a["kod"], a["nazwa"]),
+                 "vgm_usun_pine": lambda a: sesja.usun_pine(a["id"]),
+                 "vgm_strategie_wbudowane": lambda a: sesja.strategie_wbudowane(),
+                 "vgm_tester_raport": lambda a: sesja.tester_raport()}
+        if nazwa in SESJA:
+            import sesja
+            try:
+                return ok(SESJA[nazwa](a))
+            except sesja.BladSesji as e:
+                return ok({"blad": str(e), "narzedzie": nazwa,
+                           "podpowiedz": "zaloguj się na TradingView w przeglądarce z CDP"})
+
         # ── Pine ────────────────────────────────────────────────────────
         if nazwa.startswith("vgm_pine"):
             import pine

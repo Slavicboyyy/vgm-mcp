@@ -5,7 +5,7 @@ a przy tym potrafi sprawdzić, czy sygnał jest cokolwiek wart.
 
 ![vgm w terminalu](obrazy/terminal.png)
 
-Czterdzieści trzy narzędzia, dziewięćdziesiąt jeden pól danych, dziesięć rynków.
+Pięćdziesiąt trzy narzędzia, dziewięćdziesiąt jeden pól danych, dziesięć rynków.
 
 ---
 
@@ -101,6 +101,28 @@ Chcesz kilku naraz, zaloguj się. Chcesz jednego, usuń poprzedni przez
 `vgm_wskaznik_usun`.
 ---
 
+### Sesja
+
+Ta grupa wymaga zalogowanego konta TradingView w przeglądarce z CDP. Sesję
+sprawdzamy przez ciasteczko HttpOnly, bo z JavaScriptu strony nie widać go nigdy.
+Alerty i skrypty idą zwykłym HTTP z tymi ciasteczkami, bez klikania w stronę.
+
+| narzędzie | do czego | sprawdzone na |
+|---|---|---|
+| `vgm_sesja` | czy jest sesja i jaki plan | konto pro_premium |
+| `vgm_alerty` | wszystkie alerty cenowe z konta | 208 alertów |
+| `vgm_lista_obserwowanych` | instrumenty z otwartej listy w panelu | 29 symboli, lista Forex |
+| `vgm_skrypty_pine` | skrypty Pine zapisane na koncie | 59 skryptów |
+| `vgm_zrodlo_pine` | kod zapisanego skryptu | 6316 znaków |
+| `vgm_zapisz_pine` | zapis nowego skryptu na konto | lista 59 → 60 → 59 po usunięciu |
+| `vgm_usun_pine` | usunięcie skryptu, nieodwracalne | testowy usunięty |
+| `vgm_strategie_wbudowane` | wbudowane strategie z identyfikatorami | 20 ze 145 |
+| `vgm_tester_raport` | Strategy Tester: raport strategii z wykresu | panel otwarty, raport odczytany |
+
+Z zalogowanym kontem znika też ograniczenie jednego wskaźnika: cztery naraz
+liczyły się bez problemu.
+
+---
 ### Pine Script
 
 Bez przeglądarki i bez konta.
@@ -292,10 +314,16 @@ Każde polecenie przyjmuje `--json`, gdy wynik ma iść dalej do skryptu.
 
 ## Czego brakuje
 
-Lista jawna. Lepiej wiedzieć z góry, niż odkryć w trakcie.
-
-| brakuje | powód |
+| brakuje | powód, zmierzony |
 |---|---|
+| wstawianie własnego kodu do edytora Pine | Monaco w oknie aplikacji nie przyjmuje wejścia z CDP; `insertText`, zdarzenia klawiszy i `execCommand` sprawdzone, żadne nie działa bezpiecznie |
+| wbudowane strategie w testerze | `createStudy` nie dodaje ich pod żadną z trzech nazw; tester czyta raport tylko własnej strategii |
+| rysowanie na wykresie | wywołanie przechodzi, nic się nie pojawia |
+| `compileScript` z API strony | zwraca błąd serwera przy każdym zestawie argumentów; kompilacja działa osobną drogą przez `vgm_pine_sprawdz` |
+
+Obejście dla pierwszego: zapisz skrypt na konto przez `vgm_zapisz_pine`, otwórz go
+w edytorze ręcznie i dodaj na wykres przyciskiem.
+---|---|
 | wstawianie Pine na wykres | wymaga zalogowanego edytora |
 | alerty | wymagają konta |
 | rysowanie na wykresie | sprawdzone: wywołanie przechodzi, ale nic się nie pojawia bez sesji |

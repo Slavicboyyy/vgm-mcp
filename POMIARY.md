@@ -183,3 +183,46 @@ sprawdzeń mielibyśmy dziś „działającą strategię na złocie" opartą na 
 transakcjach i pomyłce w liczeniu.
 
 Sygnał odpadł. Narzędzie, które go odsiało, zostaje.
+
+---
+
+## Drugi przegląd: sześć kolejnych błędów, tym razem cudzym okiem
+
+Po zamknięciu badania dałem kod pomiaru do przeglądu innemu modelowi (GLM 5.3)
+z pytaniem, czego nie zauważyłem. Znalazł dziesięć rzeczy. Sześć zweryfikowałem
+pomiarem i naprawiłem; każdy z nich zmieniał liczby, nie tylko styl.
+
+**Wejście po zamknięciu świecy sygnału.** Sygnał liczę z zamknięcia świecy i,
+a wchodziłem po tym samym zamknięciu. Realnie da się wejść dopiero na otwarciu
+i+1. Zmierzone na RSI<30, złoto: 3,1213% wobec 2,7368%, czyli **0,38 pp zawyżenia**
+— bo dla powrotu do średniej to zamknięcie jest lokalnym dołkiem, którego nikt
+nie łapie.
+
+**ADX bez wygładzania Wildera.** Sumy proste dawały **48,89 tam, gdzie TradingView
+pokazywał 25,71** — 23 punkty różnicy. Każdy pomiar na progach ADX 30 i 15 był
+na wartościach, które nie miały nic wspólnego z tym, co widać na wykresie.
+Po przepisaniu na Wildera: 25,71 wobec 25,71, różnica 0,00.
+
+**Nakładające się wejścia w samym pomiarze.** Naprawiłem to wcześniej w liczeniu
+kosztu, ale nie w `zmierz` — tam próg dwudziestu wejść nadal przechodził na
+powtórkach tej samej pozycji. Po policzeniu epizodów: Bollinger>90 z 54 wejść
+spadł do 10, ADX>30 ze 137 do 13.
+
+**Placebo bez ziarna.** Dwa uruchomienia dawały różne losowania i różne wnioski.
+Teraz ziarno jest jawnym parametrem, a losowań 50 zamiast 20.
+
+**Połówki bez minimalnej próby.** Zgodność połów liczyła się nawet przy jednym
+wejściu w połowie. Teraz poniżej ośmiu narzędzie mówi wprost, że to za mało.
+
+**Trzymanie mylone ze średnią per okno.** `odniesienie_trzymanie` liczyło średnią
+z każdego okna, nie kupno raz i trzymanie do końca. Właściwy wzorzec jest w
+`koszt_a_przewaga`; tamta funkcja zostaje jako „bezwarunkowa średnia per okno"
+i tak jest opisana.
+
+Po tych sześciu poprawkach przegląd siedmiu warunków na złocie dziennym dał
+ten sam wniosek co wcześniej, tylko na poprawnych liczbach: żaden nie przeszedł.
+
+Cztery pozostałe uwagi z przeglądu (miara niepewności placebo, placebo blokowe
+względem reżimu zmienności, test trwałości przewagi zamiast zyskowności w połówkach,
+brak sprawdzenia poza próbą) są zapisane, ale niezrobione. To wciąż pomiar
+w próbie, nie poza nią.

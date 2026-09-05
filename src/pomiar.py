@@ -35,12 +35,16 @@ class BladPomiaru(Exception):
 def _wynik_po(swiece: list, wejscia: list[int], po_ilu: int,
               spread_proc: float) -> dict:
     """Co się działo po każdym wejściu, licząc w procentach ceny wejścia."""
+    # Sygnał liczymy z zamknięcia świecy i, ale wejść realnie można dopiero
+    # na otwarciu i+1. Zmierzone: wejście po zamknięciu i zawyżało zwrot
+    # o 0,38 pp (RSI<30 na złocie), bo dla powrotu do średniej to zamknięcie
+    # jest lokalnym dołkiem, którego nikt nie złapie.
     zwroty = []
     for i in wejscia:
-        if i + po_ilu >= len(swiece):
+        if i + 1 + po_ilu >= len(swiece):
             continue
-        wejscie = swiece[i]["zamkniecie"]
-        wyjscie = swiece[i + po_ilu]["zamkniecie"]
+        wejscie = swiece[i + 1]["otwarcie"]
+        wyjscie = swiece[i + 1 + po_ilu]["zamkniecie"]
         if not wejscie:
             continue
         zwrot = (wyjscie - wejscie) / wejscie * 100 - spread_proc
@@ -63,7 +67,7 @@ def _wynik_po(swiece: list, wejscia: list[int], po_ilu: int,
 
 def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
                 po_ilu: int = 10, ile_swiec: int = 300,
-                spread_proc: float = 0.02, losowan: int = 20) -> dict:
+                spread_proc: float = 0.02, losowan: int = 50, seed: int = 42) -> dict:
     """Czy przekroczenie progu przez wskaźnik cokolwiek zapowiada.
 
     pole:        na razie tylko "RSI" — liczony na świecach z wykresu
@@ -101,9 +105,11 @@ def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
     prawdziwy = _wynik_po(swiece, wejscia, po_ilu, spread_proc)
 
     # placebo: tyle samo wejść, ale w losowych miejscach
+    # seed jawny: bez niego dwa uruchomienia dawały różne placebo i różne wnioski
+    rng = random.Random(seed)
     losowe = []
     for _ in range(losowan):
-        prob = random.sample(range(15, len(swiece) - po_ilu),
+        prob = rng.sample(range(15, len(swiece) - po_ilu),
                              min(len(wejscia), len(swiece) - po_ilu - 16))
         w = _wynik_po(swiece, prob, po_ilu, spread_proc)
         if w.get("wejsc"):
@@ -151,6 +157,10 @@ def _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga) -> str:
     b = druga.get("sredni_zwrot_proc")
     if a is None or b is None:
         return f"przewaga {przewaga}%, ale jedna połowa okresu bez wejść — niepewne"
+    if min(pierwsza.get("wejsc", 0), druga.get("wejsc", 0)) < 8:
+        return (f"przewaga {przewaga}%, ale w jednej połowie tylko "
+                f"{min(pierwsza.get('wejsc', 0), druga.get('wejsc', 0))} wejść — "
+                "za mało, żeby mówić o zgodności połów")
     if (a > 0) != (b > 0):
         return (f"przewaga {przewaga}%, ale połowy okresu przeczą sobie "
                 f"({a}% i {b}%) — wynik niestabilny")
@@ -265,36 +275,58 @@ def _bollinger(ceny, okres=20, odchylen=2.0):
 
 
 def _adx(swiece, okres=14):
-    """Siła ruchu kierunkowego. Wysoka wartość to trend, niska to zakres."""
-    if len(swiece) < okres * 2:
-        return [None] * len(swiece)
+    """Siła ruchu kierunkowego z wygładzaniem Wildera, jak w TradingView.
 
-    plus, minus, tr = [], [], []
+    Zmierzone przed poprawką: sumy proste dawały 48,89 tam, gdzie TradingView
+    pokazywał 25,71 — 23 punkty różnicy, więc progi 30/15 nie znaczyły nic.
+    Wartość na pozycji i jest ADX ze świecy i, bez przesunięcia.
+    """
+    w = [None] * len(swiece)
+    if len(swiece) < okres * 2 + 1:
+        return w
+
+    plus, minus, tr = [0.0], [0.0], [swiece[0]["szczyt"] - swiece[0]["dolek"]]
     for i in range(1, len(swiece)):
         gora = swiece[i]["szczyt"] - swiece[i - 1]["szczyt"]
         dol = swiece[i - 1]["dolek"] - swiece[i]["dolek"]
-        plus.append(gora if gora > dol and gora > 0 else 0)
-        minus.append(dol if dol > gora and dol > 0 else 0)
+        plus.append(gora if gora > dol and gora > 0 else 0.0)
+        minus.append(dol if dol > gora and dol > 0 else 0.0)
         poprz = swiece[i - 1]["zamkniecie"]
         tr.append(max(swiece[i]["szczyt"] - swiece[i]["dolek"],
                       abs(swiece[i]["szczyt"] - poprz),
                       abs(swiece[i]["dolek"] - poprz)))
 
-    w = [None] * len(swiece)
-    dx = []
-    for i in range(okres, len(tr)):
-        str_ = sum(tr[i - okres:i])
-        if not str_:
-            dx.append(0)
-            continue
-        dp = sum(plus[i - okres:i]) / str_ * 100
-        dm = sum(minus[i - okres:i]) / str_ * 100
-        dx.append(0 if dp + dm == 0 else abs(dp - dm) / (dp + dm) * 100)
+    def wilder(seria):
+        out = [None] * len(seria)
+        if len(seria) <= okres:
+            return out
+        s = sum(seria[1:okres + 1])
+        out[okres] = s
+        for i in range(okres + 1, len(seria)):
+            s = s - s / okres + seria[i]
+            out[i] = s
+        return out
 
-    for i, wart in enumerate(dx):
-        poz = i + okres + 1
-        if poz < len(w) and i >= okres:
-            w[poz] = sum(dx[i - okres:i]) / okres
+    s_tr, s_plus, s_minus = wilder(tr), wilder(plus), wilder(minus)
+    dx = [None] * len(swiece)
+    for i in range(okres, len(swiece)):
+        if s_tr[i] is None or not s_tr[i]:
+            continue
+        dp = s_plus[i] / s_tr[i] * 100
+        dm = s_minus[i] / s_tr[i] * 100
+        dx[i] = 0.0 if dp + dm == 0 else abs(dp - dm) / (dp + dm) * 100
+
+    pierwszy = 2 * okres
+    ok = [v for v in dx[okres:pierwszy + 1] if v is not None]
+    if len(ok) < okres:
+        return w
+    adx = sum(ok[-okres:]) / okres
+    w[pierwszy] = adx
+    for i in range(pierwszy + 1, len(swiece)):
+        if dx[i] is None:
+            continue
+        adx = (adx * (okres - 1) + dx[i]) / okres
+        w[i] = adx
     return w
 
 
@@ -323,7 +355,7 @@ def _policz(nazwa: str, swiece: list) -> list:
 
 def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
            po_ilu: int = 10, ile_swiec: int = 300,
-           spread_proc: float = 0.02, losowan: int = 20) -> dict:
+           spread_proc: float = 0.02, losowan: int = 50, seed: int = 42) -> dict:
     """To samo co zmierz_prog, ale dla dowolnego z czterech wskaźników.
 
     Dostępne: RSI, Bollinger (położenie w kanale), ADX, ATR_proc.
@@ -337,13 +369,19 @@ def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
     wartosci = _policz(wskaznik, swiece)
     od = 25  # tyle świec potrzebuje najdłuższy wskaźnik na rozbieg
 
-    wejscia = []
-    for i in range(od, len(swiece) - po_ilu):
+    # Epizody, nie sąsiednie świece: po wejściu czekamy do wyjścia, zanim
+    # policzymy następne. Bez tego wejście na świecy 30 i 31 liczyło się jako
+    # dwie niezależne próby, a próg dwudziestu wejść przechodził na powtórkach.
+    wejscia, wolne_od, sygnalow = [], 0, 0
+    for i in range(od, len(swiece) - po_ilu - 1):
         w = wartosci[i]
         if w is None:
             continue
         if (kierunek == "ponizej" and w < prog) or (kierunek == "powyzej" and w > prog):
-            wejscia.append(i)
+            sygnalow += 1
+            if i >= wolne_od:
+                wejscia.append(i)
+                wolne_od = i + 1 + po_ilu
 
     if not wejscia:
         return {"wejsc": 0,
@@ -354,9 +392,11 @@ def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
     druga = _wynik_po(swiece, [i for i in wejscia if i >= polowa], po_ilu, spread_proc)
     prawdziwy = _wynik_po(swiece, wejscia, po_ilu, spread_proc)
 
+    # seed jawny: bez niego dwa uruchomienia dawały różne placebo i różne wnioski
+    rng = random.Random(seed)
     losowe = []
     for _ in range(losowan):
-        prob = random.sample(range(od, len(swiece) - po_ilu),
+        prob = rng.sample(range(od, len(swiece) - po_ilu),
                              min(len(wejscia), len(swiece) - po_ilu - od - 1))
         w = _wynik_po(swiece, prob, po_ilu, spread_proc)
         if w.get("wejsc"):
@@ -369,6 +409,8 @@ def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
     return {
         "warunek": f"{wskaznik} {kierunek} {prog}",
         "opis_wskaznika": WSKAZNIKI.get(wskaznik, ""),
+        "sygnalow_lacznie": sygnalow,
+        "epizodow_bez_nakladania": len(wejscia),
         "swiec": len(swiece),
         "sprawdzane_po": f"{po_ilu} świecach",
         "spread_odjety_proc": spread_proc,

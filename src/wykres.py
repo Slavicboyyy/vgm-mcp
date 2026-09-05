@@ -22,7 +22,26 @@ try:
 except ImportError:  # pragma: no cover
     websocket = None
 
-PORT = int(os.environ.get("VGM_CDP_PORT", "9222"))
+def _wykryj_port() -> int:
+    """Port CDP: ze zmiennej VGM_CDP_PORT, a bez niej pierwszy, który odpowiada.
+
+    Kolejność sprawdzania odpowiada temu, co mamy u siebie: 9333 to aplikacja
+    VGM Terminal z zalogowaną sesją TradingView, 9556 to CW3 Browser bez sesji,
+    9222 to domyślny port każdej przeglądarki uruchomionej z debugowaniem.
+    """
+    z_env = os.environ.get("VGM_CDP_PORT")
+    if z_env:
+        return int(z_env)
+    for p in (9333, 9556, 9222):
+        try:
+            urllib.request.urlopen(f"http://localhost:{p}/json/version", timeout=2)
+            return p
+        except Exception:
+            continue
+    return 9222
+
+
+PORT = _wykryj_port()
 API = "window.TradingViewApi._activeChartWidgetWV.value()"
 _licznik = [0]
 
@@ -97,7 +116,12 @@ def _wykonaj_raz(kod: str, czekaj: float = 25):
                 continue
             r = o.get("result", {})
             if "exceptionDetails" in r:
-                raise BladWykresu(r["exceptionDetails"].get("text", "błąd w przeglądarce"))
+                # samo "text" to zwykle gołe "Uncaught" — prawdziwy komunikat
+                # siedzi w exception.description; bez niego każda diagnoza jest ślepa
+                ed = r["exceptionDetails"]
+                opis = ((ed.get("exception") or {}).get("description")
+                        or ed.get("text") or "błąd w przeglądarce")
+                raise BladWykresu(str(opis).splitlines()[0][:220])
             return r.get("result", {}).get("value")
         raise BladWykresu(f"przeglądarka nie odpowiedziała w {czekaj}s")
     finally:
