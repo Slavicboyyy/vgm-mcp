@@ -66,7 +66,7 @@ def _wynik_po(swiece: list, wejscia: list[int], po_ilu: int,
 
 
 def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
-                po_ilu: int = 10, ile_swiec: int = 300,
+                po_ilu: int = 10, ile_swiec: int = 0,
                 spread_proc: float = 0.02, losowan: int = 50, seed: int = 42) -> dict:
     """Czy przekroczenie progu przez wskaźnik cokolwiek zapowiada.
 
@@ -119,6 +119,18 @@ def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
     przewaga = (round(prawdziwy["sredni_zwrot_proc"] - placebo, 4)
                 if placebo is not None and prawdziwy.get("wejsc") else None)
 
+    # Miara niepewności: sama przewaga nad średnią placebo nic nie mówi, gdy
+    # losowania rozrzucają się szerzej niż ta przewaga. z-score pokazuje,
+    # ile odchyleń placebo dzieli prawdziwy wynik od losowego. Poniżej 1
+    # to szum; percentyl mówi, jaka część losowań była gorsza od prawdziwego.
+    odch_placebo = round(statistics.pstdev(losowe), 4) if len(losowe) > 1 else None
+    z = None
+    percentyl = None
+    if odch_placebo and prawdziwy.get("wejsc"):
+        z = round((prawdziwy["sredni_zwrot_proc"] - placebo) / odch_placebo, 2)
+        percentyl = round(sum(1 for x in losowe if x < prawdziwy["sredni_zwrot_proc"])
+                          / len(losowe) * 100, 1)
+
     return {
         "warunek": f"{pole} {kierunek} {prog}",
         "swiec": len(swiece),
@@ -128,14 +140,18 @@ def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
         "pierwsza_polowa": _wynik_po(swiece, pierwsza, po_ilu, spread_proc),
         "druga_polowa": _wynik_po(swiece, druga, po_ilu, spread_proc),
         "placebo_sredni_zwrot": placebo,
+        "placebo_odchylenie": odch_placebo,
         "przewaga_nad_placebo": przewaga,
+        "z_score": z,
+        "percentyl_wobec_placebo": percentyl,
+        "losowan": len(losowe),
         "wniosek": _wniosek(prawdziwy, placebo, przewaga,
                             _wynik_po(swiece, pierwsza, po_ilu, spread_proc),
-                            _wynik_po(swiece, druga, po_ilu, spread_proc)),
+                            _wynik_po(swiece, druga, po_ilu, spread_proc), z),
     }
 
 
-def _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga) -> str:
+def _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga, z=None) -> str:
     """Jedno zdanie o tym, co z pomiaru wynika. Bez upiększania."""
     if not prawdziwy.get("wejsc"):
         return "brak wejść — nie ma czego mierzyć"
@@ -147,6 +163,9 @@ def _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga) -> str:
     if przewaga <= 0:
         return (f"sygnał NIE bije losowego wejścia (różnica {przewaga}%) — "
                 "nie ma przewagi")
+    if z is not None and abs(z) < 1.0:
+        return (f"przewaga {przewaga}% mieści się w rozrzucie placebo "
+                f"(z-score {z}) — to szum, nie sygnał")
     if prawdziwy["sredni_zwrot_proc"] <= 0:
         # bicie placebo nie wystarcza: placebo bywa jeszcze gorsze, a stratny
         # sygnał zostaje stratny niezależnie od tego, z czym go porównamy
@@ -191,7 +210,7 @@ def _rsi(ceny: list[float], okres: int = 14) -> list[float | None]:
 
 
 def porownaj_progi(progi: list[float] | None = None, kierunek: str = "ponizej",
-                   po_ilu: int = 10, ile_swiec: int = 300,
+                   po_ilu: int = 10, ile_swiec: int = 0,
                    spread_proc: float = 0.02) -> dict:
     """Ten sam pomiar na kilku progach naraz — który daje dość wejść i przewagę.
 
@@ -354,7 +373,7 @@ def _policz(nazwa: str, swiece: list) -> list:
 
 
 def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
-           po_ilu: int = 10, ile_swiec: int = 300,
+           po_ilu: int = 10, ile_swiec: int = 0,
            spread_proc: float = 0.02, losowan: int = 50, seed: int = 42) -> dict:
     """To samo co zmierz_prog, ale dla dowolnego z czterech wskaźników.
 
@@ -406,6 +425,18 @@ def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
     przewaga = (round(prawdziwy["sredni_zwrot_proc"] - placebo, 4)
                 if placebo is not None and prawdziwy.get("wejsc") else None)
 
+    # Miara niepewności: sama przewaga nad średnią placebo nic nie mówi, gdy
+    # losowania rozrzucają się szerzej niż ta przewaga. z-score pokazuje,
+    # ile odchyleń placebo dzieli prawdziwy wynik od losowego. Poniżej 1
+    # to szum; percentyl mówi, jaka część losowań była gorsza od prawdziwego.
+    odch_placebo = round(statistics.pstdev(losowe), 4) if len(losowe) > 1 else None
+    z = None
+    percentyl = None
+    if odch_placebo and prawdziwy.get("wejsc"):
+        z = round((prawdziwy["sredni_zwrot_proc"] - placebo) / odch_placebo, 2)
+        percentyl = round(sum(1 for x in losowe if x < prawdziwy["sredni_zwrot_proc"])
+                          / len(losowe) * 100, 1)
+
     return {
         "warunek": f"{wskaznik} {kierunek} {prog}",
         "opis_wskaznika": WSKAZNIKI.get(wskaznik, ""),
@@ -418,12 +449,16 @@ def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
         "pierwsza_polowa": pierwsza,
         "druga_polowa": druga,
         "placebo_sredni_zwrot": placebo,
+        "placebo_odchylenie": odch_placebo,
         "przewaga_nad_placebo": przewaga,
-        "wniosek": _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga),
+        "z_score": z,
+        "percentyl_wobec_placebo": percentyl,
+        "losowan": len(losowe),
+        "wniosek": _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga, z),
     }
 
 
-def przeglad_wskaznikow(po_ilu: int = 10, ile_swiec: int = 300,
+def przeglad_wskaznikow(po_ilu: int = 10, ile_swiec: int = 0,
                         spread_proc: float = 0.02) -> dict:
     """Wszystkie cztery wskaźniki, sensowne progi, jeden przebieg.
 
@@ -501,7 +536,7 @@ def przeglad_instrumentow(instrumenty: list | None = None,
                     "szczegol": p.get("powod", "")[:70],
                 }
                 continue
-            w = przeglad_wskaznikow(po_ilu, 300, spread_proc)
+            w = przeglad_wskaznikow(po_ilu, 0, spread_proc)
             wyniki[klucz] = {
                 "sprawdzono": w["sprawdzono"],
                 "przeszly": w["przeszly"],
@@ -541,7 +576,7 @@ def _najlepszy(wiersze: list) -> dict | None:
             "wejsc": n["wejsc"], "trafien_proc": n["trafien_proc"]}
 
 
-def odniesienie_trzymanie(po_ilu: int = 10, ile_swiec: int = 300,
+def odniesienie_trzymanie(po_ilu: int = 10, ile_swiec: int = 0,
                           spread_proc: float = 0.02) -> dict:
     """Ile daje samo trzymanie przez N świec, bez żadnego sygnału.
 
@@ -558,7 +593,7 @@ def odniesienie_trzymanie(po_ilu: int = 10, ile_swiec: int = 300,
 
 def czy_sygnal_czy_trend(wskaznik: str = "Bollinger", prog: float = 90,
                          kierunek: str = "powyzej", po_ilu: int = 10,
-                         ile_swiec: int = 300, spread_proc: float = 0.02) -> dict:
+                         ile_swiec: int = 0, spread_proc: float = 0.02) -> dict:
     """Rozstrzyga, czy warunek naprawdę coś wnosi, czy tylko łapie trend.
 
     Porównuje cztery liczby: warunek, warunek odwrotny, samo trzymanie
@@ -608,7 +643,7 @@ def czy_sygnal_czy_trend(wskaznik: str = "Bollinger", prog: float = 90,
 def jak_dlugo_trzymac(wskaznik: str = "Bollinger", prog: float = 90,
                       kierunek: str = "powyzej",
                       dlugosci: list[int] | None = None,
-                      ile_swiec: int = 300, spread_proc: float = 0.02) -> dict:
+                      ile_swiec: int = 0, spread_proc: float = 0.02) -> dict:
     """Po ilu świecach sygnał daje najwięcej ponad samo trzymanie.
 
     Zmierzone: ten sam warunek potrafi działać odwrotnie na krótkim terminie
@@ -671,7 +706,7 @@ def jak_dlugo_trzymac(wskaznik: str = "Bollinger", prog: float = 90,
 
 def koszt_a_przewaga(wskaznik: str = "Bollinger", prog: float = 90,
                      kierunek: str = "powyzej", po_ilu: int = 40,
-                     ile_swiec: int = 300,
+                     ile_swiec: int = 0,
                      koszty: list[float] | None = None) -> dict:
     """Przy jakim koszcie transakcji sygnał przestaje mieć sens.
 

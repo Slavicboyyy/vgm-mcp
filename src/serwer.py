@@ -262,7 +262,7 @@ async def lista_narzedzi() -> list[Tool]:
                               "kierunek": dict(S, description="ponizej albo powyzej",
                                                default="ponizej"),
                               "po_ilu": {"type": "integer", "default": 10},
-                              "ile_swiec": {"type": "integer", "default": 300},
+                              "ile_swiec": {"type": "integer", "default": 0, "description": "0 = cała wczytana historia"},
                               "spread_proc": {"type": "number", "default": 0.02}}}),
 
         Tool(name="vgm_zmierz",
@@ -572,14 +572,13 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                     import pomiar
                     return ok(pomiar.zmierz_prog(
                         "RSI", a.get("prog", 30), a.get("kierunek", "ponizej"),
-                        a.get("po_ilu", 10), a.get("ile_swiec", 300),
+                        a.get("po_ilu", 10), a.get("ile_swiec", 0),
                         a.get("spread_proc", 0.02)))
                 if nazwa == "vgm_zmierz":
                     import pomiar
                     return ok(pomiar.zmierz(
                         a.get("wskaznik", "RSI"), a.get("prog", 30),
-                        a.get("kierunek", "ponizej"), a.get("po_ilu", 10),
-                        300, a.get("spread_proc", 0.02)))
+                        a.get("kierunek", "ponizej"), a.get("po_ilu", 10), 0, a.get("spread_proc", 0.02)))
                 if nazwa == "vgm_sygnal_czy_trend":
                     import pomiar
                     return ok(pomiar.czy_sygnal_czy_trend(
@@ -590,7 +589,7 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                     return ok(pomiar.koszt_a_przewaga(
                         a.get("wskaznik", "Bollinger"), a.get("prog", 90),
                         a.get("kierunek", "powyzej"), a.get("po_ilu", 40),
-                        300, a.get("koszty")))
+                        0, a.get("koszty")))
                 if nazwa == "vgm_jak_dlugo_trzymac":
                     import pomiar
                     return ok(pomiar.jak_dlugo_trzymac(
@@ -602,12 +601,12 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                 if nazwa == "vgm_przeglad_wskaznikow":
                     import pomiar
                     return ok(pomiar.przeglad_wskaznikow(
-                        a.get("po_ilu", 10), 300, a.get("spread_proc", 0.02)))
+                        a.get("po_ilu", 10), 0, a.get("spread_proc", 0.02)))
                 if nazwa == "vgm_porownaj_progi":
                     import pomiar
                     return ok(pomiar.porownaj_progi(
                         a.get("progi"), a.get("kierunek", "ponizej"),
-                        a.get("po_ilu", 10), 300, a.get("spread_proc", 0.02)))
+                        a.get("po_ilu", 10), 0, a.get("spread_proc", 0.02)))
                 if nazwa == "vgm_swiece_przedzialy":
                     return ok(analiza.swiece_wiele_przedzialow(
                         a.get("przedzialy"), a.get("ile", 100)))

@@ -160,7 +160,7 @@ Ta grupa nie liczy sygnału. Sprawdza, czy sygnał jest cokolwiek wart.
 | `vgm_jak_dlugo_trzymac` | po ilu świecach sygnał daje najwięcej | złoto i ropa, 5 długości |
 | `vgm_koszt_a_przewaga` | przy jakim koszcie sygnał traci sens | złoto i ropa, 6 poziomów |
 
-Cztery warunki, wszystkie muszą być spełnione naraz:
+Pięć warunków, wszystkie muszą być spełnione naraz:
 
 **Dodatni zwrot po spreadzie.** Koszt wejścia wchodzi do rachunku.
 
@@ -172,6 +172,14 @@ pobicie go nie wystarcza.
 nie powtórzy się w drugiej.
 
 **Co najmniej dwadzieścia wejść.** Trzy trafienia na trzy próby to przypadek.
+
+**Przewaga większa niż rozrzut placebo.** Losowań jest pięćdziesiąt, z jawnym
+ziarnem. Narzędzie liczy ich odchylenie i z-score prawdziwego wyniku. Poniżej
+jednego odchylenia to szum, nawet gdy liczba wygląda dobrze.
+
+Pomiar bierze domyślnie całą historię, jaką wykres ma wczytaną. Na złocie dziennym
+to 2518 świec, czyli dziesięć lat. Na trzystu świecach jeden warunek wyglądał na
+sygnał; na dziesięciu latach ma z-score −0,69 i wypada gorzej niż losowe wejście.
 
 Przegląd siedmiu warunków na czterech wskaźnikach dał wynik odmowny w całości:
 

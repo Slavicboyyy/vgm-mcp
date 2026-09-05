@@ -191,11 +191,16 @@ def skan_wlasny(rynek: str, warunki: list[dict], pola_do: list[str] | None = Non
 
 
 # ── liczenie na świecach z wykresu ──────────────────────────────────────
-def _swiece_z_wykresu(ile=200):
+def _swiece_z_wykresu(ile=0):
     """Pobiera świece z otwartego wykresu. Osobno, żeby reszta modułu
-    działała bez przeglądarki."""
+    działała bez przeglądarki.
+
+    ile=0 znaczy: cała historia, jaką wykres ma wczytaną. Zmierzone: na złocie
+    dziennym to 2518 świec, a domyślne 300 przez kilka iteracji obcinało
+    dziesięć lat do jednego roku i dawało pozorne sygnały.
+    """
     import wykres
-    w = wykres.swiece(ile)
+    w = wykres.swiece(ile if ile and ile > 0 else 5000)
     return w["swiece"]
 
 

@@ -226,3 +226,40 @@ Cztery pozostałe uwagi z przeglądu (miara niepewności placebo, placebo blokow
 względem reżimu zmienności, test trwałości przewagi zamiast zyskowności w połówkach,
 brak sprawdzenia poza próbą) są zapisane, ale niezrobione. To wciąż pomiar
 w próbie, nie poza nią.
+
+---
+
+## Trzeci przegląd: dziesięć lat historii i z-score
+
+Dwie rzeczy naraz. Po pierwsze, wykres miał wczytane 2518 świec dziennych,
+a każdy pomiar brał ostatnie 300 — bo tyle wpisałem jako domyślne. Po drugie,
+z przeglądu GLM doszła miara niepewności: odchylenie losowań placebo, z-score
+prawdziwego wyniku wobec nich i percentyl.
+
+Siedem warunków, złoto dzienne, 2500 świec, wejście na otwarciu następnej
+świecy, epizody bez nakładania, 50 losowań z jawnym ziarnem:
+
+```
+warunek                epiz   zwrot%  placebo   odch     z    pctl
+RSI poniżej 30           16    0,820    0,651  0,887  0,19   62   za mało
+RSI powyżej 70           43    0,497    0,581  0,529 -0,16   42   nie bije
+Bollinger poniżej 10     62    0,256    0,605  0,434 -0,80   20   nie bije
+Bollinger powyżej 90     92    0,333    0,551  0,314 -0,69   24   nie bije
+ADX powyżej 30           87    0,636    0,552  0,355  0,24   64   szum
+ADX poniżej 15           41    0,006    0,590  0,516 -1,13   14   nie bije
+ATR powyżej 0,15        224    0,585    0,574  0,198  0,05   54   szum
+```
+
+Bollinger powyżej 90, który na trzystu świecach wyglądał na sygnał, na dziesięciu
+latach ma 92 epizody, z-score −0,69 i 24. percentyl: **gorzej niż losowe wejście**.
+Dwa warunki z dodatnią różnicą (ADX>30, ATR) mieszczą się w rozrzucie placebo
+z zapasem, z-score 0,24 i 0,05.
+
+Odchylenie losowań (0,20–0,89 punktu procentowego) jest w każdym wierszu większe
+od różnicy między sygnałem a placebo. To jest właściwy powód, dla którego
+wcześniejsze „przewagi" rzędu 0,1–0,4 pp nic nie znaczyły: mieściły się
+w szumie, którego wtedy nie mierzyłem.
+
+Od teraz pomiar bierze domyślnie całą dostępną historię, a wniosek wymaga
+pięciu rzeczy naraz: dodatni zwrot po koszcie, przewaga nad placebo, |z| ≥ 1,
+zgodność obu połów, co najmniej dwadzieścia epizodów.
