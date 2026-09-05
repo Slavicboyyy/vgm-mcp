@@ -263,3 +263,24 @@ w szumie, którego wtedy nie mierzyłem.
 Od teraz pomiar bierze domyślnie całą dostępną historię, a wniosek wymaga
 pięciu rzeczy naraz: dodatni zwrot po koszcie, przewaga nad placebo, |z| ≥ 1,
 zgodność obu połów, co najmniej dwadzieścia epizodów.
+
+---
+
+## Trwałość w połówkach: przewaga, nie zysk
+
+Kolejna uwaga z przeglądu GLM. Wcześniej zgodność połów sprawdzałem po zysku:
+czy obie połowy okresu są na plusie. To za słabe, bo w hossie na plusie jest
+wszystko, także losowe wejście. Teraz placebo i z-score liczą się osobno dla
+każdej połowy, a zgodność dotyczy znaku przewagi nad placebo.
+
+Zmierzone na EURUSD dziennym, warunek ATR powyżej 0,15, 24 epizody:
+
+```
+pierwsza połowa   12 epizodów   przewaga −0,15 pp   z −0,55
+druga połowa      12 epizodów   przewaga +0,14 pp   z  0,60
+```
+
+Całość: z-score 0,01, czyli szum. Ale nawet gdyby całość przeszła, połowy
+przeczą sobie znakiem przewagi. Sygnał, który w jednej połowie bije placebo,
+a w drugiej przegrywa, nie jest sygnałem, tylko przypadkowym dopasowaniem
+do jednego okresu.

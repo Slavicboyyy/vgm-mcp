@@ -168,8 +168,9 @@ Pięć warunków, wszystkie muszą być spełnione naraz:
 o tej samej częstości. Placebo bywa gorsze od stratnego sygnału, więc samo
 pobicie go nie wystarcza.
 
-**Zgodność obu połów okresu.** Wynik z jednej połowy nic nie znaczy, dopóki
-nie powtórzy się w drugiej.
+**Zgodność obu połów okresu.** Placebo i z-score liczone osobno dla każdej
+połowy. Liczy się znak przewagi nad placebo w obu, nie sam zysk: zysk w obu
+połowach może być wspólny dla całego rynku, przewaga nad losowym wejściem już nie.
 
 **Co najmniej dwadzieścia wejść.** Trzy trafienia na trzy próby to przypadek.
 

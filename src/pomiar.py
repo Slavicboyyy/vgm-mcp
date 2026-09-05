@@ -65,6 +65,35 @@ def _wynik_po(swiece: list, wejscia: list[int], po_ilu: int,
     }
 
 
+def _placebo_dla(swiece, wejscia, od, do, po_ilu, spread_proc, rng, losowan):
+    """Placebo, odchylenie i z-score dla wejść ograniczonych do zakresu świec.
+
+    Używane osobno dla każdej połowy okresu. Zgodność ZNAKU PRZEWAGI w obu
+    połowach mówi o trwałości sygnału; zgodność samego zysku mówi tylko o tym,
+    że rynek rósł w obu — a to nie to samo.
+    """
+    w = _wynik_po(swiece, wejscia, po_ilu, spread_proc)
+    if not w.get("wejsc"):
+        return {"wejsc": 0}
+    pula = range(max(od, 25), max(od + 1, do - po_ilu - 1))
+    n = min(len(wejscia), max(1, len(pula) - 1))
+    losowe = []
+    for _ in range(losowan):
+        if len(pula) <= 1:
+            break
+        prob = rng.sample(pula, n)
+        r = _wynik_po(swiece, prob, po_ilu, spread_proc)
+        if r.get("wejsc"):
+            losowe.append(r["sredni_zwrot_proc"])
+    if len(losowe) < 2:
+        return {**w, "placebo": None, "przewaga": None, "z": None}
+    sr = statistics.mean(losowe)
+    od_ = statistics.pstdev(losowe)
+    prz = round(w["sredni_zwrot_proc"] - sr, 4)
+    return {**w, "placebo": round(sr, 4), "przewaga": prz,
+            "z": round(prz / od_, 2) if od_ else None}
+
+
 def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
                 po_ilu: int = 10, ile_swiec: int = 0,
                 spread_proc: float = 0.02, losowan: int = 50, seed: int = 42) -> dict:
@@ -99,10 +128,12 @@ def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
                 "uwaga": f"warunek {pole} {kierunek} {prog} nie wystąpił ani razu"}
 
     polowa = len(swiece) // 2
-    pierwsza = [i for i in wejscia if i < polowa]
-    druga = [i for i in wejscia if i >= polowa]
-
     prawdziwy = _wynik_po(swiece, wejscia, po_ilu, spread_proc)
+    rng_pol = random.Random(seed + 1)
+    pierwsza = _placebo_dla(swiece, [i for i in wejscia if i < polowa], 0, polowa,
+                            po_ilu, spread_proc, rng_pol, losowan)
+    druga = _placebo_dla(swiece, [i for i in wejscia if i >= polowa], polowa, len(swiece),
+                         po_ilu, spread_proc, rng_pol, losowan)
 
     # placebo: tyle samo wejść, ale w losowych miejscach
     # seed jawny: bez niego dwa uruchomienia dawały różne placebo i różne wnioski
@@ -137,17 +168,15 @@ def zmierz_prog(pole: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
         "sprawdzane_po": f"{po_ilu} świecach",
         "spread_odjety_proc": spread_proc,
         "caly_okres": prawdziwy,
-        "pierwsza_polowa": _wynik_po(swiece, pierwsza, po_ilu, spread_proc),
-        "druga_polowa": _wynik_po(swiece, druga, po_ilu, spread_proc),
+        "pierwsza_polowa": pierwsza,
+        "druga_polowa": druga,
         "placebo_sredni_zwrot": placebo,
         "placebo_odchylenie": odch_placebo,
         "przewaga_nad_placebo": przewaga,
         "z_score": z,
         "percentyl_wobec_placebo": percentyl,
         "losowan": len(losowe),
-        "wniosek": _wniosek(prawdziwy, placebo, przewaga,
-                            _wynik_po(swiece, pierwsza, po_ilu, spread_proc),
-                            _wynik_po(swiece, druga, po_ilu, spread_proc), z),
+        "wniosek": _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga, z),
     }
 
 
@@ -180,11 +209,18 @@ def _wniosek(prawdziwy, placebo, przewaga, pierwsza, druga, z=None) -> str:
         return (f"przewaga {przewaga}%, ale w jednej połowie tylko "
                 f"{min(pierwsza.get('wejsc', 0), druga.get('wejsc', 0))} wejść — "
                 "za mało, żeby mówić o zgodności połów")
-    if (a > 0) != (b > 0):
-        return (f"przewaga {przewaga}%, ale połowy okresu przeczą sobie "
-                f"({a}% i {b}%) — wynik niestabilny")
-    return (f"przewaga {przewaga}% nad losowym wejściem, zgodna w obu połowach "
-            f"({a}% i {b}%) przy {prawdziwy['wejsc']} wejściach")
+    pa, pb = pierwsza.get("przewaga"), druga.get("przewaga")
+    if pa is None or pb is None:
+        if (a > 0) != (b > 0):
+            return (f"przewaga {przewaga}%, ale połowy okresu przeczą sobie "
+                    f"({a}% i {b}%) — wynik niestabilny")
+    elif (pa > 0) != (pb > 0):
+        # zysk w obu połowach może być wspólny dla całego rynku;
+        # o trwałości mówi dopiero przewaga nad placebo w każdej z osobna
+        return (f"przewaga {przewaga}% w całości, ale nad placebo tylko w jednej "
+                f"połowie ({pa} pp i {pb} pp) — sygnał nietrwały")
+    return (f"przewaga {przewaga}% nad losowym wejściem, w obu połowach osobno "
+            f"({pa} pp i {pb} pp) przy {prawdziwy['wejsc']} wejściach")
 
 
 def _rsi(ceny: list[float], okres: int = 14) -> list[float | None]:
@@ -407,9 +443,12 @@ def zmierz(wskaznik: str = "RSI", prog: float = 30, kierunek: str = "ponizej",
                 "uwaga": f"warunek {wskaznik} {kierunek} {prog} nie wystąpił ani razu"}
 
     polowa = len(swiece) // 2
-    pierwsza = _wynik_po(swiece, [i for i in wejscia if i < polowa], po_ilu, spread_proc)
-    druga = _wynik_po(swiece, [i for i in wejscia if i >= polowa], po_ilu, spread_proc)
     prawdziwy = _wynik_po(swiece, wejscia, po_ilu, spread_proc)
+    rng_pol = random.Random(seed + 1)
+    pierwsza = _placebo_dla(swiece, [i for i in wejscia if i < polowa], 0, polowa,
+                            po_ilu, spread_proc, rng_pol, losowan)
+    druga = _placebo_dla(swiece, [i for i in wejscia if i >= polowa], polowa, len(swiece),
+                         po_ilu, spread_proc, rng_pol, losowan)
 
     # seed jawny: bez niego dwa uruchomienia dawały różne placebo i różne wnioski
     rng = random.Random(seed)
