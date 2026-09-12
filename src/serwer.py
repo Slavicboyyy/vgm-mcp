@@ -440,6 +440,75 @@ async def lista_narzedzi() -> list[Tool]:
                           "poglądowe: tester wypełnia na zamknięciu świecy."),
              inputSchema={"type": "object", "properties": {}}),
 
+        # ── układ okna: kilka wykresów naraz ────────────────────────────
+        Tool(name="vgm_uklad_stan",
+             description=("Jaki jest układ okna, ile jest wykresów, który aktywny i co "
+                          "na każdym stoi. Podaje też liczbę paneli w aktywnym wykresie "
+                          "(pierwszy to cena, kolejne to wskaźniki w osobnych oknach) "
+                          "i czy układ ma niezapisane zmiany."),
+             inputSchema={"type": "object", "properties": {}}),
+        Tool(name="vgm_uklad_ustaw",
+             description=("Dzieli okno na kilka wykresów. Kody: s jeden, 2h dwa w poziomie, "
+                          "2v dwa w pionie, 2-1 dwa u góry i jeden pod, 3h, 3v, 4 dwa na dwa, "
+                          "6, 8. Zmienia to, co widzi użytkownik — wróć kodem s. Zwraca "
+                          "`zgodny`, bo przy nieobsługiwanym kodzie TradingView przyjmuje "
+                          "wywołanie i nic nie robi."),
+             inputSchema={"type": "object",
+                          "properties": {"kod": dict(S, default="s",
+                                                     description="s, 2h, 2v, 2-1, 3h, 3v, 4, 6, 8")}}),
+        Tool(name="vgm_uklad_wybierz",
+             description=("Wybiera aktywny wykres w układzie, licząc od zera. Wszystkie "
+                          "pozostałe narzędzia wykresu działają na aktywnym, więc to "
+                          "przełącznik dla vgm_wykres_symbol, vgm_wskaznik_dodaj i reszty."),
+             inputSchema={"type": "object",
+                          "properties": {"indeks": {"type": "integer", "default": 0}}}),
+        Tool(name="vgm_uklad_symbol",
+             description=("Ustawia instrument na wybranym wykresie układu, nie na aktywnym. "
+                          "Po wywołaniu aktywny zostaje ten zmieniony. Sprawdza odczytem, "
+                          "czy instrument naprawdę się zmienił."),
+             inputSchema={"type": "object",
+                          "properties": {"indeks": {"type": "integer"},
+                                         "symbol": dict(S, description="np. FX:GBPUSD"),
+                                         "interwal": dict(S, description="pominięty = bez zmiany")},
+                          "required": ["indeks", "symbol"]}),
+
+        # ── odtwarzanie historii: wymaga otwartej przeglądarki ──────────
+        Tool(name="vgm_replay_stan",
+             description=("Stan odtwarzania historii: czy dostępne, czy trwa, na której "
+                          "świecy stoi, jak głęboko sięga historia instrumentu. "
+                          "Sprawdź przed każdym innym narzędziem odtwarzania."),
+             inputSchema={"type": "object", "properties": {}}),
+        Tool(name="vgm_replay_start",
+             description=("Cofa wykres do podanej daty i włącza tryb odtwarzania — świeca "
+                          "po świecy, bez podglądania przyszłości. Data jako YYYY-MM-DD, "
+                          "YYYY-MM-DD HH:MM albo sekundy; pominięta = początek historii "
+                          "(zmierzone na EURUSD: 2001-11-28). Zostawia wykres w trybie "
+                          "odtwarzania, więc po skończeniu wywołaj vgm_replay_stop."),
+             inputSchema={"type": "object",
+                          "properties": {"data": dict(S, description="np. 2026-09-11 albo 2026-09-11 13:30")}}),
+        Tool(name="vgm_replay_krok",
+             description=("Przesuwa odtwarzanie o podaną liczbę świec. Zwraca, gdzie stoi "
+                          "i czy wykres naprawdę ruszył — bo API potwierdza krok, nawet "
+                          "gdy nic się nie stało. Zmierzone: cztery kroki na trzyminutowych "
+                          "świecach przesunęły wykres o dwanaście minut."),
+             inputSchema={"type": "object",
+                          "properties": {"ile": {"type": "integer", "default": 1,
+                                                 "description": "1 do 500"}}}),
+        Tool(name="vgm_replay_autoplay",
+             description=("Włącza lub wyłącza samoczynne przesuwanie świec. Opóźnienie "
+                          "w milisekundach na świecę: 100 to dziesięć świec na sekundę, "
+                          "większa liczba to wolniej. Zmierzone: przy 300 ms sześć sekund "
+                          "realnego czasu przejechało 69 minut wykresu."),
+             inputSchema={"type": "object",
+                          "properties": {"wlacz": {"type": "boolean", "default": True},
+                                         "opoznienie_ms": {"type": "integer",
+                                                           "description": "np. 100, 300, 1000"}}}),
+        Tool(name="vgm_replay_stop",
+             description=("Kończy odtwarzanie, wraca do czasu rzeczywistego i chowa pasek. "
+                          "Wywołaj zawsze po skończonej pracy — inaczej użytkownik zostaje "
+                          "z wykresem cofniętym w przeszłość."),
+             inputSchema={"type": "object", "properties": {}}),
+
         # ── Pine Script: bez przeglądarki ───────────────────────────────
         Tool(name="vgm_pine_sprawdz",
              description=("Kompiluje kod Pine w kompilatorze TradingView i zwraca błędy "
@@ -554,7 +623,8 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                              "vgm_przeglad_",          # wskaznikow ORAZ instrumentow
                              "vgm_sygnal_czy_trend",
                              "vgm_odniesienie_trzymanie", "vgm_jak_dlugo_trzymac",
-                             "vgm_koszt_a_przewaga", "vgm_walk_forward")):
+                             "vgm_koszt_a_przewaga", "vgm_walk_forward",
+                             "vgm_replay_", "vgm_uklad_")):
             import wykres  # dopiero tutaj — reszta działa bez websocket-client
 
             try:
@@ -594,6 +664,29 @@ async def wywolaj(nazwa: str, a: dict) -> list[TextContent]:
                         "RSI", a.get("prog", 30), a.get("kierunek", "ponizej"),
                         a.get("po_ilu", 10), a.get("ile_swiec", 0),
                         a.get("spread_proc", 0.02)))
+                if nazwa.startswith("vgm_uklad_"):
+                    import uklad
+                    UKLAD = {"vgm_uklad_stan": lambda a: uklad.stan(),
+                             "vgm_uklad_ustaw": lambda a: uklad.ustaw(a.get("kod", "s")),
+                             "vgm_uklad_wybierz": lambda a: uklad.wybierz(a.get("indeks", 0)),
+                             "vgm_uklad_symbol": lambda a: uklad.symbol_w_wykresie(
+                                 a["indeks"], a["symbol"], a.get("interwal"))}
+                    try:
+                        return ok(UKLAD[nazwa](a))
+                    except uklad.BladUkladu as e:
+                        return ok({"blad": str(e), "narzedzie": nazwa})
+                if nazwa.startswith("vgm_replay_"):
+                    import replay
+                    REPLAY = {"vgm_replay_stan": lambda a: replay.stan(),
+                              "vgm_replay_start": lambda a: replay.start(a.get("data")),
+                              "vgm_replay_krok": lambda a: replay.krok(a.get("ile", 1)),
+                              "vgm_replay_autoplay": lambda a: replay.autoplay(
+                                  a.get("wlacz", True), a.get("opoznienie_ms")),
+                              "vgm_replay_stop": lambda a: replay.stop()}
+                    try:
+                        return ok(REPLAY[nazwa](a))
+                    except replay.BladReplay as e:
+                        return ok({"blad": str(e), "narzedzie": nazwa})
                 if nazwa == "vgm_walk_forward":
                     import pomiar
                     return ok(pomiar.walk_forward(

@@ -5,7 +5,7 @@ a przy tym potrafi sprawdzić, czy sygnał jest cokolwiek wart.
 
 ![vgm w terminalu](obrazy/terminal.png)
 
-Pięćdziesiąt cztery narzędzia, dziewięćdziesiąt jeden pól danych, dziesięć rynków.
+Sześćdziesiąt trzy narzędzia, dziewięćdziesiąt jeden pól danych, dziesięć rynków.
 
 ---
 
@@ -121,6 +121,40 @@ Alerty i skrypty idą zwykłym HTTP z tymi ciasteczkami, bez klikania w stronę.
 
 Z zalogowanym kontem znika też ograniczenie jednego wskaźnika: cztery naraz
 liczyły się bez problemu.
+
+---
+### Odtwarzanie historii
+
+Wykres cofa się do wybranej daty i idzie świeca po świecy, bez podglądania
+przyszłości. Do przechodzenia strategii ręcznie albo sprawdzania, jak sygnał
+wyglądał w danym dniu.
+
+| narzędzie | do czego | sprawdzone na |
+|---|---|---|
+| `vgm_replay_stan` | czy dostępne, czy trwa, na której świecy stoi | EURUSD, historia od 2001-11-28 |
+| `vgm_replay_start` | cofnięcie wykresu do daty | data podana i początek historii |
+| `vgm_replay_krok` | przesunięcie o N świec | 4 kroki na świecach 3-minutowych = 12 minut |
+| `vgm_replay_autoplay` | samoczynne przesuwanie, z prędkością | 300 ms: 6 sekund realnych = 69 minut wykresu |
+| `vgm_replay_stop` | powrót do czasu rzeczywistego | pasek schowany, wykres przywrócony |
+
+Data jako `YYYY-MM-DD`, `YYYY-MM-DD HH:MM` albo sekundy. `vgm_replay_krok`
+zwraca `ruszyl`, bo API potwierdza krok także wtedy, gdy wykres stoi.
+
+---
+
+### Układ okna
+
+Kilka wykresów obok siebie, każdy z własnym instrumentem i przedziałem.
+
+| narzędzie | do czego | sprawdzone na |
+|---|---|---|
+| `vgm_uklad_stan` | układ, liczba wykresów, co na każdym stoi | 2v: EURUSD 3 min i GBPUSD 60 min |
+| `vgm_uklad_ustaw` | podział okna: s, 2h, 2v, 2-1, 3h, 3v, 4, 6, 8 | 2h i 2v, powrót do s |
+| `vgm_uklad_wybierz` | który wykres jest aktywny | indeksy 0 i 1 |
+| `vgm_uklad_symbol` | instrument na wybranym wykresie | GBPUSD i USDJPY na drugim |
+
+Pozostałe narzędzia wykresu działają na wykresie aktywnym, więc
+`vgm_uklad_wybierz` jest przełącznikiem dla nich wszystkich.
 
 ---
 ### Pine Script
@@ -333,6 +367,16 @@ Każde polecenie przyjmuje `--json`, gdy wynik ma iść dalej do skryptu.
 
 | brakuje | powód, zmierzony |
 |---|---|
+| wstawianie własnego kodu do edytora Pine | Monaco w oknie aplikacji nie przyjmuje wejścia z CDP; `insertText`, zdarzenia klawiszy i `execCommand` sprawdzone, żadne nie działa bezpiecznie |
+| zapis układu na konto | `saveChartAs` istnieje, ale w tym samym API nie ma kasowania — każdy test zostawiłby śmieć na koncie, a bez testu na żywo nic tu nie wchodzi |
+| pozycje papierowe w odtwarzaniu | `buy(1)` zwraca `undefined`, `position()` zostaje pusta także przy otwartym panelu Replay Trading |
+| wbudowane strategie w testerze | `createStudy` nie dodaje ich pod żadną z trzech nazw; tester czyta raport tylko własnej strategii |
+| rysowanie na wykresie | wywołanie przechodzi, nic się nie pojawia |
+| karty przeglądarki | TradingView nie wystawia API kart; `vgm_wykres_karta` otwiera nową kartę przez samą przeglądarkę |
+
+Obejście dla pierwszego: zapisz skrypt na konto przez `vgm_zapisz_pine`, otwórz go
+w edytorze ręcznie i dodaj na wykres przyciskiem.
+---|---|
 | wstawianie własnego kodu do edytora Pine | Monaco w oknie aplikacji nie przyjmuje wejścia z CDP; `insertText`, zdarzenia klawiszy i `execCommand` sprawdzone, żadne nie działa bezpiecznie |
 | wbudowane strategie w testerze | `createStudy` nie dodaje ich pod żadną z trzech nazw; tester czyta raport tylko własnej strategii |
 | rysowanie na wykresie | wywołanie przechodzi, nic się nie pojawia |
