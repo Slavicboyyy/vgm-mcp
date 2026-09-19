@@ -1,23 +1,32 @@
 # VGM MCP
 
-Serwer MCP do TradingView. Czyta rynek bez logowania i bez otwartej przeglądarki,
-a przy tym potrafi sprawdzić, czy sygnał jest cokolwiek wart.
+Serwer MCP do TradingView. Czyta rynek, steruje wykresem i sprawdza,
+czy sygnał jest cokolwiek wart.
 
 ![vgm w terminalu](obrazy/terminal.png)
 
 Sześćdziesiąt trzy narzędzia, dziewięćdziesiąt jeden pól danych, dziesięć rynków.
 
+Cztery warstwy, każda o innych wymaganiach:
+
+| warstwa | narzędzi | czego potrzebuje |
+|---|---:|---|
+| dane, analiza, sprawdzanie Pine | 20 | niczego: ani konta, ani przeglądarki |
+| pomiar wartości sygnału | 10 | świec z wykresu |
+| wykres, odtwarzanie, układ okna | 24 | otwartej karty TradingView |
+| alerty, listy, zapis Pine, tester | 9 | zalogowanego konta |
+
 ---
 
 ## Po co
 
-Większość narzędzi tego typu wymaga uruchomionej aplikacji TradingView albo
-własnego okna przeglądarki, więc nie ruszą na serwerze ani w tle. Sięgają też
-po garść pól, zwykle sześć albo dwanaście, choć publicznie dostępnych jest
-dziewięćdziesiąt jeden.
+Większość narzędzi tego typu nie ruszy bez uruchomionej aplikacji TradingView.
+Sięgają też po garść pól, zwykle sześć albo dwanaście, choć publicznie
+dostępnych jest dziewięćdziesiąt jeden.
 
-VGM bierze wszystkie i nie potrzebuje do tego okna. Do tego ma warstwę, której
-nie ma nikt inny: sprawdzającą, czy sygnał daje przewagę, czy tylko tak wygląda.
+VGM bierze wszystkie dziewięćdziesiąt jeden, a warstwa danych i analizy chodzi
+na serwerze bez żadnego okna. Do tego ma coś, czego nie ma nikt inny: warstwę
+sprawdzającą, czy sygnał daje przewagę, czy tylko tak wygląda.
 
 ---
 
