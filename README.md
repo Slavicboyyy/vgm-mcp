@@ -3,7 +3,7 @@
 Serwer MCP do TradingView. Czyta rynek, steruje wykresem i sprawdza,
 czy sygnał jest cokolwiek wart.
 
-![vgm w terminalu](obrazy/terminal.png)
+![Wilk z lupą nad wykresem](obrazy/glowna.png)
 
 Sześćdziesiąt trzy narzędzia, dziewięćdziesiąt jeden pól danych, dziesięć rynków.
 
@@ -70,6 +70,11 @@ sprawdzającą, czy sygnał daje przewagę, czy tylko tak wygląda.
 | `vgm_skan` | dowolny filtr TradingView |
 
 ### Wykres
+
+![Wykres z narzędziami](obrazy/wykres.png)
+
+Instrumenty na obrazkach są wymyślone. Zrzuty pokazują układ, nie czyjeś konto.
+
 
 Ta grupa wymaga otwartej karty z TradingView. Port podajesz w `VGM_CDP_PORT`.
 
@@ -166,6 +171,10 @@ Pozostałe narzędzia wykresu działają na wykresie aktywnym, więc
 `vgm_uklad_wybierz` jest przełącznikiem dla nich wszystkich.
 
 ---
+![Cztery wykresy naraz](obrazy/uklad.png)
+
+---
+
 ### Pine Script
 
 Bez przeglądarki i bez konta.
@@ -189,6 +198,9 @@ znaczy, że sprawdziłem tylko, czy się wywołuje.
 ---
 
 ### Pomiar
+
+
+![Wynik pomiaru sygnału](obrazy/pomiar.png)
 
 Ta grupa nie liczy sygnału. Sprawdza, czy sygnał jest cokolwiek wart.
 
